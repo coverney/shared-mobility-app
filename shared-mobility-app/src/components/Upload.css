@@ -1,0 +1,13 @@
+.Upload {
+  font-size: calc(1px + 1.5vmin);
+  color: white;
+  padding-top: 2%;
+}
+
+#submitButton {
+  margin-top: 10%;
+}
+
+#userInput {
+  /* color: red; */
+}
