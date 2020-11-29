@@ -1,3 +1,5 @@
+// Initiate via yarn start
+
 import React from 'react';
 import logo from './upload_icon.png';
 import './App.css';
