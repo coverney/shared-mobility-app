@@ -12,10 +12,22 @@ def get_date(datetime):
     """
     return datetime.date()
 
+def get_date_from_string(time_stamp):
+    """ Return the date part of a time stamp string
+    """
+    t = iso8601.parse_date(time_stamp)
+    return t.date()
+
 def get_minutes(datetime):
     """ Convert time part of a datetime object into minutes
     """
     return datetime.hour*60.0+datetime.minute+datetime.second/60.0
+
+def get_minutes_from_string(time_stamp):
+    """ Convert time part of a time stamp string into minutes
+    """
+    t = iso8601.parse_date(time_stamp)
+    return (t.hour*60.0+t.minute+t.second/60.0)
 
 def get_cdf_data(df, start, end):
     """ Get valid pickup data from event data
@@ -57,16 +69,10 @@ def get_dates(start, end):
             break
     return dates
 
-def calculate_avail_factors_per_tract(df, ecdf, start_date, end_date):
-    """ Calculate additional avail factors within a single lat/long region by date
+def calculate_avail_factors_multiple_dates(df_result, df, ecdf):
+    """ Calculate additional avail factors within a single lat/long region for
+        intervals over multiple dates
     """
-    # TODO: make this function more efficient
-    df_result = pd.DataFrame(index=pd.date_range(start_date, end_date, freq='d'), columns=['tract', 'date', 'avail_perc', 'count_time', 'cdf_sum', 'lat2', 'lng2'])
-    df_result['tract'] = df['tract'].values[0]
-    df_result['lat2'] = df['lat2'].values[0]
-    df_result['lng2'] = df['lng2'].values[0]
-    df_result['date'] = df_result.index
-    df_result = df_result.fillna(0)
     # go through rows and distribute avail factors into the days that fall between start and end
     for index, row in df.iterrows():
         # get dictionary of dates and their start and end times
@@ -89,6 +95,49 @@ def calculate_avail_factors_per_tract(df, ecdf, start_date, end_date):
             df_result.loc[date, 'avail_perc'] = min(24*60, df_result.loc[date, 'avail_perc'] + avail_time)
             df_result.loc[date, 'count_time'] += count_time
             df_result.loc[date, 'cdf_sum'] = min(1, df_result.loc[date, 'cdf_sum'] + cdf)
+    return df_result
+
+def calculate_avail_factors_per_tract(df, ecdf, start_date, end_date):
+    """ Calculate additional avail factors within a single lat/long region by date
+    """
+    # split df into part with intervals on same date and part with intervals covering multiple dates
+    df = df.copy()
+    df['start_date'] = df['start'].apply(get_date_from_string)
+    df['end_date'] = df['end'].apply(get_date_from_string)
+    mask = df['start_date'] == df['end_date']
+    df_same_date = df[mask].copy().reset_index(drop=True)
+    df_multiple_dates = df[~mask].copy().reset_index(drop=True)
+    # print('Number of same date intervals:', df_same_date.shape[0], 'Number of multiple date intervals', df_multiple_dates.shape[0])
+
+    # create df_result dataframe with pre-populated values
+    df_result = pd.DataFrame(index=pd.date_range(start_date, end_date, freq='d'), columns=['tract', 'date', 'lat2', 'lng2'])
+    df_result['tract'] = df['tract'].values[0]
+    df_result['lat2'] = df['lat2'].values[0]
+    df_result['lng2'] = df['lng2'].values[0]
+    df_result['date'] = df_result.index
+
+    # calculate avail factors on df_same_date
+    # convert start and end times to minutes
+    df_same_date['start_minutes'] = df_same_date['start'].apply(get_minutes_from_string)
+    df_same_date['end_minutes'] = df_same_date['end'].apply(get_minutes_from_string)
+    # calculate amount of time (in minutes) that at least one scooter was available
+    df_same_date['avail_perc'] = (df_same_date['count'] > 0) * df_same_date['avail']
+    # calculate amount of time (in minutes) that scooters were available for in total
+    df_same_date['count_time'] = df_same_date['count'] * df_same_date['avail']
+    # calculate percent of scooter usage for intervals that were > 0.1 min and had at least one scooter available
+    df_same_date['cdf_sum'] = ((df_same_date['count'] > 0) & (df_same_date['avail'] > 0.1)) * (df_same_date['end_minutes'].apply(ecdf) - df_same_date['start_minutes'].apply(ecdf))
+    # group by date and then merge df_same_date with df_result
+    df_same_date_grouped = df_same_date.groupby(['start_date'])[['avail_perc', 'count_time', 'cdf_sum']].sum().reset_index()
+    df_result['date'] = df_result['date'].astype('str')
+    df_same_date_grouped['start_date'] = df_same_date_grouped['start_date'].astype('str')
+    # df_result = df_result.merge(df_same_date_grouped[['start_date', 'avail_perc', 'count_time', 'cdf_sum']], how='left', left_on='date', right_on='start_date')
+    df_result = df_result.merge(df_same_date_grouped, how='left', left_on='date', right_on='start_date')
+    df_result = df_result.drop('start_date', 1)
+    df_result = df_result.fillna(0)
+    df_result.index = df_result['date']
+
+    # calculate avail factors on df_multiple_dates
+    df_result = calculate_avail_factors_multiple_dates(df_result, df_multiple_dates, ecdf)
 
     # calculate percent of day that at least one scooter was available
     df_result['avail_perc'] = df_result['avail_perc'] / (24*60.0) # used to be (16*60.0)
@@ -96,6 +145,9 @@ def calculate_avail_factors_per_tract(df, ecdf, start_date, end_date):
     df_result['count_time'] = df_result['count_time'] / (24*60.0) # used to be (16*60.0)
     # calculate percent of daily scooter usage that occurred
     df_result['cdf_sum'] = df_result['cdf_sum'] / (ecdf(24*60)-ecdf(1*60)) # used to be (ecdf(22*60)-ecdf(6*60))
+
+    df_result = df_result[['date', 'tract', 'lat2', 'lng2', 'avail_perc', 'count_time', 'cdf_sum']]
+    df_result = df_result.reset_index(drop=True)
     return df_result
 
 def calculate_avail_factors(df, ecdf, start_date, end_date, func):
@@ -122,6 +174,9 @@ def merge_demand_dfs(df_pickups, df_avail):
     # fix the date columns
     df_pickups['date'] = df_pickups['date'].astype('str')
     df_avail['date'] = df_avail['date'].astype('str')
+    # make sure tract columns are strings
+    df_pickups['tract'] = df_pickups['tract'].astype('str')
+    df_avail['tract'] = df_avail['tract'].astype('str')
     # merge pickups and avail factors
     df_result = df_avail.merge(df_pickups, how='left', on=['date', 'tract'])
     # drop rows with no trips

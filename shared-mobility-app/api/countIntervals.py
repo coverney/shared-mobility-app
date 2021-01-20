@@ -71,4 +71,7 @@ def count_intervals(df_locations, start, end):
     timer_end = time.time()
     print('Elapsed time to count intervals with parallelization:', (timer_end - timer_start)/60.0, 'minutes')
     # doing some further processing before saving
-    return utils.undo_fake_tract(df_result.dropna())
+    df_result = utils.undo_fake_tract(df_result.dropna())
+    df_result['count'] = df_result['count'].astype('int64')
+    df_result['avail'] = df_result['avail'].astype('float64')
+    return df_result
