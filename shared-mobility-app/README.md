@@ -1,4 +1,6 @@
-# Getting Started with Create React App
+# Running the App
+
+Open two terminal windows and navigate to the `shared-mobility-app/shared-mobility-app` folder. In one terminal window, type `yarn start-api`. In the other, type `yarn start`. If you have a browser window open, the React web page should automatically open as a new tab. If not, then open [http://localhost:3000](http://localhost:3000) to view it in the browser.
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
@@ -13,6 +15,10 @@ Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
 
 The page will reload if you make edits.\
 You will also see any lint errors in the console.
+
+### `yarn start-api`
+
+Runs the backend Flask API, which is necessary for data processing.
 
 ### `yarn test`
 

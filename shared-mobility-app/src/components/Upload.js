@@ -4,6 +4,7 @@ import Form from 'react-bootstrap/Form';
 import Modal from 'react-bootstrap/Modal';
 import Col from 'react-bootstrap/Col';
 import './Upload.css';
+import { Redirect } from 'react-router-dom'
 
 class Upload extends Component {
   // create state variable and handleUploadData function
@@ -21,6 +22,12 @@ class Upload extends Component {
     // prevents the default action that belongs to the event from happening
     // we have this because we don't actually want to submit the form
     ev.preventDefault();
+    // make sure there are no missing files
+    if (this.uploadEvents.files[0] == null || this.uploadLocations.files[0] == null) {
+      console.log('Missing at least one data file')
+      this.setState({error: true, errorMsg: "Missing at least one file, please make sure to upload both events and locations data!"});
+      return;
+    }
     // create a set of key/value pairs to send to the backend
     const data = new FormData();
     data.append('eventsFile', this.uploadEvents.files[0]);
@@ -39,7 +46,11 @@ class Upload extends Component {
 
   renderRedirect() {
     if (this.state.redirect) {
-      return;
+      return (
+        <>
+          <Redirect to="/data" />
+        </>
+      );
     }
   }
 

@@ -4,15 +4,40 @@ import React from 'react';
 import logo from './upload_icon.png';
 import './App.css';
 import Upload from './components/Upload'
+import DataVisualization from './components/DataVisualization'
+import {
+  BrowserRouter as Router,
+  Switch,
+  Route
+} from "react-router-dom";
 
 function App() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>Upload Data</p>
-      </header>
-      <Upload />
+    <div>
+      <Router>
+        <Switch>
+          {/* If the current URL is /data, this route is rendered
+          while the rest are ignored. */}
+          <Route path="/data">
+            <DataVisualization />
+          </Route>
+          {/* If none of the previous routes render anything,
+          this route acts as a fallback.
+
+          Important: A route with path="/" will *always* match
+          the URL because all URLs begin with a /. So that's
+          why we put this one last of all */}
+          <Route path="/">
+            <div className="App">
+              <header className="App-header">
+                <img src={logo} className="App-logo" alt="logo" />
+                <p>Upload Data</p>
+              </header>
+              <Upload />
+            </div>
+          </Route>
+        </Switch>
+      </Router>
     </div>
   );
 }

@@ -25,9 +25,9 @@ def file_upload():
         # valid extension, return success response
         response = {'error': False, 'msg': "successfully received uploaded files"}
         # start processing data
-        df_events = pd.read_csv(eventsFile)
-        df_locations = pd.read_csv(locationsFile)
-        processData.process_data(df_events, df_locations)
+        # df_events = pd.read_csv(eventsFile)
+        # df_locations = pd.read_csv(locationsFile)
+        # processData.process_data(df_events, df_locations)
     else:
         # return unsuccessful response
         response = {'error': True, 'msg': "invalid file extension, both files need to be CSV"}

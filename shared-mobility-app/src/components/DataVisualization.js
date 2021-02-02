@@ -6,7 +6,7 @@ class DataVisualization extends Component {
       <>
         <div>
           <p>
-            Hi!
+            Data visualization dashboard goes here!
           </p>
         </div>
       </>
