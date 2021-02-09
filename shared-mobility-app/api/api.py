@@ -3,6 +3,7 @@
 from flask import Flask, request
 import processData
 import pandas as pd
+import time # to add time delay for testing
 
 ALLOWED_EXTENSIONS = set(['.csv'])
 
@@ -28,6 +29,8 @@ def file_upload():
         # df_events = pd.read_csv(eventsFile)
         # df_locations = pd.read_csv(locationsFile)
         # processData.process_data(df_events, df_locations)
+
+        time.sleep(5) # sleep for 5 seconds for testing
     else:
         # return unsuccessful response
         response = {'error': True, 'msg': "invalid file extension, both files need to be CSV"}

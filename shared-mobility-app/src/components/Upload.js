@@ -1,3 +1,4 @@
+import logo from './upload_icon.png';
 import React, {Component} from 'react';
 import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';
@@ -5,6 +6,7 @@ import Modal from 'react-bootstrap/Modal';
 import Col from 'react-bootstrap/Col';
 import './Upload.css';
 import { Redirect } from 'react-router-dom'
+import { Default } from 'react-awesome-spinners'
 
 class Upload extends Component {
   // create state variable and handleUploadData function
@@ -14,6 +16,7 @@ class Upload extends Component {
       error: false,
       errorMsg: '',
       redirect: false,
+      loading: false,
     };
     this.handleUploadData = this.handleUploadData.bind(this);
   }
@@ -28,6 +31,8 @@ class Upload extends Component {
       this.setState({error: true, errorMsg: "Missing at least one file, please make sure to upload both events and locations data!"});
       return;
     }
+    // set loading variable to be true
+    this.setState({loading: true});
     // create a set of key/value pairs to send to the backend
     const data = new FormData();
     data.append('eventsFile', this.uploadEvents.files[0]);
@@ -41,6 +46,7 @@ class Upload extends Component {
       if (!this.state.error && this.state.errorMsg !== '') {
         this.setState({redirect: true});
       }
+      this.setState({loading: false});
     });
   }
 
@@ -55,32 +61,50 @@ class Upload extends Component {
   }
 
   render() {
+    const loading = this.state.loading;
     return (
       <>
-        <Form onSubmit={this.handleUploadData} className="Upload">
-          <Form.Group>
-            <Form.Row>
-              <Form.Label column>Events Data</Form.Label>
-              <Col>
-                <Form.File id="fileInput"
-                  ref={(ref) => { this.uploadEvents = ref; }}
-                  type="file"
-                />
-              </Col>
-            </Form.Row>
-            <br />
-            <Form.Row id="userInput2">
-              <Form.Label column>Locations Data</Form.Label>
-              <Col>
-                <Form.File id="fileInput"
-                  ref={(ref) => { this.uploadLocations = ref; }}
-                  type="file"
-                />
-              </Col>
-            </Form.Row>
-          </Form.Group>
-          <Button variant="outline-light" type="submit" id="submitButton"> Upload </Button>
-        </Form>
+        <div>
+          {loading
+            ? <div>
+                <header className="App-header">
+                  <img src={logo} className="App-logo" alt="logo" />
+                  <p>Processing Data</p>
+                </header>
+                <Default />
+              </div>
+            : <div>
+                <header className="App-header">
+                  <img src={logo} className="App-logo" alt="logo" />
+                  <p>Upload Data</p>
+                </header>
+                <Form onSubmit={this.handleUploadData} className="Upload">
+                  <Form.Group>
+                    <Form.Row>
+                      <Form.Label column>Events Data</Form.Label>
+                      <Col>
+                        <Form.File id="fileInput"
+                          ref={(ref) => { this.uploadEvents = ref; }}
+                          type="file"
+                        />
+                      </Col>
+                    </Form.Row>
+                    <br />
+                    <Form.Row id="userInput2">
+                      <Form.Label column>Locations Data</Form.Label>
+                      <Col>
+                        <Form.File id="fileInput"
+                          ref={(ref) => { this.uploadLocations = ref; }}
+                          type="file"
+                        />
+                      </Col>
+                    </Form.Row>
+                  </Form.Group>
+                  <Button variant="outline-light" type="submit" id="submitButton"> Upload </Button>
+              </Form>
+            </div>
+          }
+        </div>
 
         <Modal
           show={this.state.error}
@@ -107,6 +131,7 @@ class Upload extends Component {
         <div>
           {this.renderRedirect()}
         </div>
+
       </>
     );
   }

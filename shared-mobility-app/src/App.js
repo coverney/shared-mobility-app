@@ -1,7 +1,5 @@
 // Initiate via yarn start
-
 import React from 'react';
-import logo from './upload_icon.png';
 import './App.css';
 import Upload from './components/Upload'
 import DataVisualization from './components/DataVisualization'
@@ -29,10 +27,6 @@ function App() {
           why we put this one last of all */}
           <Route path="/">
             <div className="App">
-              <header className="App-header">
-                <img src={logo} className="App-logo" alt="logo" />
-                <p>Upload Data</p>
-              </header>
               <Upload />
             </div>
           </Route>
