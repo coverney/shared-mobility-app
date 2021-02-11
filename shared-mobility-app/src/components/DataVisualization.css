@@ -11,3 +11,12 @@
 .DataVisualization-text {
   color: white;
 }
+
+.leaflet-container {
+  width: 50%;
+  height: 50vh;
+}
+
+#downloadButton {
+  margin-top: 1%;
+}
