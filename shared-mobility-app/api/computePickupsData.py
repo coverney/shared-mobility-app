@@ -17,13 +17,13 @@ def clean_events_data(df, start, end):
     # only get the rows with event_type_reason == "user_pick_up" and event_time between 6 am and 10 pm
     # also make sure dates are between the start and end period
     df = df[(df['event_type_reason'] == "user_pick_up") & (df['event_time'] >= iso8601.parse_date(start)) & (df['event_time'] <= iso8601.parse_date(end))]
-    return df[['date', 'lat', 'lng', 'tract']].reset_index(drop=True)
+    return df[['date', 'tract']].reset_index(drop=True)
 
 def count_pickups(df):
     """ Group df by tract and date and count
     """
     df = df.copy()
-    return df.groupby(['tract', 'date', 'lat', 'lng']).size().reset_index(name="trips")
+    return df.groupby(['tract', 'date']).size().reset_index(name="trips")
 
 def compute_pickups(df_events, start, end):
     """ Compute pickups data, which is the number of trips a day within

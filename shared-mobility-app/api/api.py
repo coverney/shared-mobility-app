@@ -3,11 +3,14 @@
 from flask import Flask, request, send_file
 from DataProcessor import DataProcessor
 import pandas as pd
+import flask_excel as excel
+from collections import OrderedDict
 import time # to add time delay for testing
 
 ALLOWED_EXTENSIONS = set(['.csv'])
 
 app = Flask(__name__)
+excel.init_excel(app)
 processor = None
 
 @app.route('/upload', methods=['POST'])
@@ -41,12 +44,6 @@ def file_upload():
 
 @app.route('/return-demand-file', methods=['GET'])
 def return_demand_file():
-    file = '../../../data_files/20210210_demandLatLng.csv'
-    # file = processor.get_demand_file()
-    try:
-        return send_file(file,
-                        mimetype='text/csv',
-                        attachment_filename='demand.csv',
-                        as_attachment=True)
-    except Exception as e:
-        return str(e)
+    demand_list = pd.read_csv('../../../data_files/20210210_demandLatLng.csv').to_dict('records', into=OrderedDict)
+    # demand_list = processor.get_demand().to_dict('records', into=OrderedDict)
+    return excel.make_response_from_records(demand_list, file_type='csv')
