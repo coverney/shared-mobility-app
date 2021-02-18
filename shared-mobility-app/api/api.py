@@ -11,7 +11,7 @@ ALLOWED_EXTENSIONS = set(['.csv'])
 
 app = Flask(__name__)
 excel.init_excel(app)
-processor = None
+processor = DataProcessor()
 
 @app.route('/upload', methods=['POST'])
 def file_upload():
@@ -32,7 +32,8 @@ def file_upload():
         # start processing data
         df_events = pd.read_csv(eventsFile)
         df_locations = pd.read_csv(locationsFile)
-        processor = DataProcessor(df_events, df_locations)
+        processor.set_events(df_events)
+        processor.set_locations(df_locations)
         processor.process_data()
         # print("Shape of demand file", processor.get_demand().shape)
 
@@ -44,6 +45,28 @@ def file_upload():
 
 @app.route('/return-demand-file', methods=['GET'])
 def return_demand_file():
-    demand_list = pd.read_csv('../../../data_files/20210210_demandLatLng.csv').to_dict('records', into=OrderedDict)
-    # demand_list = processor.get_demand().to_dict('records', into=OrderedDict)
+    # demand_list = pd.read_csv('../../../data_files/20210210_demandLatLng.csv').to_dict('records', into=OrderedDict)
+    demand_list = processor.get_demand().to_dict('records', into=OrderedDict)
     return excel.make_response_from_records(demand_list, file_type='csv')
+
+@app.route('/return-rectangles', methods=['GET'])
+def return_rectangles():
+    # rectangles = [
+    #   {
+    #     'name': "Rectangle 1",
+    #     'color': 'black',
+    #     'bounds': [[41.835, -71.415],[41.825, -71.405]]
+    #   },
+    #   {
+    #     'name': "Rectangle 2",
+    #     'color': 'red',
+    #     'bounds': [[41.825, -71.415],[41.815, -71.405]]
+    #   }
+    # ]
+    # test_processor = DataProcessor()
+    # rectangles = test_processor.build_shape_data()
+    if processor.get_demand() is not None:
+        rectangles = processor.build_shape_data()
+        return {'data': rectangles}
+    else:
+        return {'data': []}
