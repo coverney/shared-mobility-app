@@ -1,9 +1,7 @@
 import React, {Component} from 'react';
 import Button from 'react-bootstrap/Button';
 import './DataVisualization.css';
-import { MapContainer, TileLayer, Marker, Popup, Rectangle, Tooltip } from 'react-leaflet'
-import { CSVLink } from 'react-csv'
-// import GeoMercator from './GeoMercator'
+import { MapContainer, TileLayer, Rectangle, Tooltip } from 'react-leaflet'
 
 class DataVisualization extends Component {
   // create state variable
@@ -11,24 +9,48 @@ class DataVisualization extends Component {
     super(props);
     this.state = {
         center: [41.82972307181493, -71.41681396120897],
-        data: [],
+        demandFilename: "estimated_demand.csv",
         rectangles: [],
     };
-    this.csvLink = React.createRef();
   }
 
-  downloadData() {
+downloadData() {
     fetch('/return-demand-file').then(res => res).then(data => {
-      // console.log(data);
-      var a = data.body.getReader();
-      a.read().then(({ done, value }) => {
-        var raw_data = new TextDecoder("utf-8").decode(value);
-        // console.log(raw_data);
-        this.setState({data: raw_data});
-        // click the CSVLink component to trigger the CSV download
-        this.csvLink.current.link.click()
+      var reader = data.body.getReader();
+      return new ReadableStream({
+        start(controller) {
+          return pump();
+          function pump() {
+            return reader.read().then(({ done, value }) => {
+              // When no more data needs to be consumed, close the stream
+              if (done) {
+                  console.log("Stream complete");
+                  controller.close();
+                  return;
+              }
+              // Enqueue the next data chunk into our target stream
+              controller.enqueue(value);
+              return pump();
+            });
+          }
+        }
       })
-    });
+    })
+    .then(stream => new Response(stream))
+    .then(response => response.blob())
+    .then(blob => URL.createObjectURL(blob))
+    .then(url => {
+      // console.log(url);
+      // console.log(this.state.demandFilename);
+      var link = document.createElement("a");
+      link.href = url;
+      link.style = "visibility:hidden";
+      link.download = this.state.demandFilename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    })
+    .catch(err => console.error(err));
   }
 
   getRectangleData() {
@@ -69,7 +91,7 @@ class DataVisualization extends Component {
         <span>
           {data.map((item, i) => {
             return (
-              <Rectangle key={i} bounds={item.bounds} color={item.trips_color}>
+              <Rectangle key={i} bounds={item.bounds} color={item.log_trips_color}>
                 <Tooltip sticky>
                   Lat: {item.lat}, Long: {item.lng} <br />
                   Mean Trips/Day: {item.trips}
@@ -86,7 +108,7 @@ class DataVisualization extends Component {
         <span>
           {data.map((item, i) => {
             return (
-              <Rectangle key={i} bounds={item.bounds} color={item.adj_trips_color}>
+              <Rectangle key={i} bounds={item.bounds} color={item.log_adj_trips_color}>
                 <Tooltip sticky>
                   Lat: {item.lat}, Long: {item.lng} <br />
                   Mean Trips/Day: {item.adj_trips}
@@ -107,7 +129,6 @@ class DataVisualization extends Component {
           <p className="DataVisualization-text">
             Scooter Number of Trips Map
           </p>
-          {/* <GeoMercator width={1000} height={600} events={true}/> */}
           <MapContainer
             center={this.state.center}
             zoom={13}
@@ -140,15 +161,6 @@ class DataVisualization extends Component {
           </MapContainer>
 
           <Button onClick={this.downloadData.bind(this)} id="downloadButton">Download Data</Button>
-
-          <CSVLink
-            data={this.state.data}
-            filename="estimated_demand.csv"
-            className="hidden"
-            ref={this.csvLink}
-            target="_blank"
-         />
-
         </div>
       </>
     );

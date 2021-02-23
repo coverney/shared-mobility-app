@@ -5,7 +5,8 @@
 }
 
 #submitButton {
-  margin-top: 10%;
+  margin-top: 7%;
+  font-size: calc(3px + 1.5vmin);
 }
 
 #fileInput {
@@ -15,4 +16,14 @@
 
 #userInput2 {
   padding-top: 3%;
+}
+
+#userInput3 {
+  padding-top: 3%;
+}
+
+.formText {
+  text-align: center;
+  padding: 3%;
+  font-size: calc(3px + 1.5vmin);
 }

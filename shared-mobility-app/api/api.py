@@ -20,33 +20,53 @@ def file_upload():
     send the data to the processing pipeline, and
     returns a response to the frontend
     """
-    eventsFile = request.files['eventsFile']
-    eventsFilename = eventsFile.filename
-    locationsFile = request.files['locationsFile']
-    locationsFilename = locationsFile.filename
-    print(f"received events file, {eventsFilename}, and locations file, {locationsFilename}, from client")
-    # check file extension
-    if any(ext in eventsFilename for ext in ALLOWED_EXTENSIONS) and any(ext in locationsFilename for ext in ALLOWED_EXTENSIONS):
-        # valid extension, return success response
-        response = {'error': False, 'msg': "successfully received uploaded files"}
-        # start processing data
-        df_events = pd.read_csv(eventsFile)
-        df_locations = pd.read_csv(locationsFile)
-        processor.set_events(df_events)
-        processor.set_locations(df_locations)
-        processor.process_data()
-        # print("Shape of demand file", processor.get_demand().shape)
-
-        # time.sleep(3) # sleep for 3 seconds for testing
+    if 'demandFile' in request.files:
+        # received demand file and can skip data processing step
+        demandFile = request.files['demandFile']
+        demandFilename = demandFile.filename
+        print(f"received demand file, {demandFilename}, from client")
+        # check file extension
+        if any(ext in demandFilename for ext in ALLOWED_EXTENSIONS):
+            # valid extension, return success response
+            response = {'error': False, 'msg': "successfully received uploaded file"}
+            # set df_demand var in processor
+            df_demand = pd.read_csv(demandFile)
+            if processor.is_valid_df_demand(df_demand):
+                processor.set_demand(df_demand)
+            else:
+                # return unsuccessful response
+                response = {'error': True, 'msg': "demand file missing required cols"}
+        else:
+            # return unsuccessful response
+            response = {'error': True, 'msg': "invalid file extension, files needs to be CSV"}
     else:
-        # return unsuccessful response
-        response = {'error': True, 'msg': "invalid file extension, both files need to be CSV"}
+        # received events and location files and will process accordingly
+        eventsFile = request.files['eventsFile']
+        eventsFilename = eventsFile.filename
+        locationsFile = request.files['locationsFile']
+        locationsFilename = locationsFile.filename
+        print(f"received events file, {eventsFilename}, and locations file, {locationsFilename}, from client")
+        # check file extension
+        if any(ext in eventsFilename for ext in ALLOWED_EXTENSIONS) and any(ext in locationsFilename for ext in ALLOWED_EXTENSIONS):
+            # valid extension, return success response
+            response = {'error': False, 'msg': "successfully received uploaded files"}
+            # start processing data
+            df_events = pd.read_csv(eventsFile)
+            df_locations = pd.read_csv(locationsFile)
+            processor.set_events(df_events)
+            processor.set_locations(df_locations)
+            processor.process_data()
+            # print("Shape of demand file", processor.get_demand().shape)
+            # time.sleep(3) # sleep for 3 seconds for testing
+        else:
+            # return unsuccessful response
+            response = {'error': True, 'msg': "invalid file extension, both files need to be CSV"}
     return response
 
 @app.route('/return-demand-file', methods=['GET'])
 def return_demand_file():
-    # demand_list = pd.read_csv('../../../data_files/20210210_demandLatLng.csv').to_dict('records', into=OrderedDict)
-    demand_list = processor.get_demand().to_dict('records', into=OrderedDict)
+    # demand_list = pd.read_csv('../../../data_files/20210223_demandLatLng.csv').to_dict('records', into=OrderedDict)
+    demand_list = processor.get_relevant_demand_cols().to_dict('records', into=OrderedDict)
     return excel.make_response_from_records(demand_list, file_type='csv')
 
 @app.route('/return-rectangles', methods=['GET'])

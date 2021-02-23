@@ -26,28 +26,46 @@ class Upload extends Component {
     // we have this because we don't actually want to submit the form
     ev.preventDefault();
     // make sure there are no missing files
-    if (this.uploadEvents.files[0] == null || this.uploadLocations.files[0] == null) {
+    if (this.uploadDemand.files[0] == null && (this.uploadEvents.files[0] == null || this.uploadLocations.files[0] == null)) {
       console.log('Missing at least one data file')
       this.setState({error: true, errorMsg: "Missing at least one file, please make sure to upload both events and locations data!"});
       return;
+    } else if (this.uploadDemand.files[0] != null) {
+      console.log('Received demand file')
+      // set loading variable to be true
+      this.setState({loading: true});
+      // create a set of key/value pairs to send to the backend
+      const data = new FormData();
+      data.append('demandFile', this.uploadDemand.files[0]);
+      data.append('demandFilename', this.uploadDemand.files[0].name);
+      // send the uploaded data to flask
+      fetch('/upload', { method: 'POST', body: data }).then(response => response.json()).then(response => {
+        console.log(response);
+        this.setState({error: response.error, errorMsg: response.msg});
+        if (!this.state.error && this.state.errorMsg !== '') {
+          this.setState({redirect: true});
+        }
+        this.setState({loading: false});
+      });
+    } else {
+      // set loading variable to be true
+      this.setState({loading: true});
+      // create a set of key/value pairs to send to the backend
+      const data = new FormData();
+      data.append('eventsFile', this.uploadEvents.files[0]);
+      data.append('eventsFilename', this.uploadEvents.files[0].name);
+      data.append('locationsFile', this.uploadLocations.files[0]);
+      data.append('locationsFilename', this.uploadLocations.files[0].name);
+      // send the uploaded data to flask
+      fetch('/upload', { method: 'POST', body: data }).then(response => response.json()).then(response => {
+        console.log(response);
+        this.setState({error: response.error, errorMsg: response.msg});
+        if (!this.state.error && this.state.errorMsg !== '') {
+          this.setState({redirect: true});
+        }
+        this.setState({loading: false});
+      });
     }
-    // set loading variable to be true
-    this.setState({loading: true});
-    // create a set of key/value pairs to send to the backend
-    const data = new FormData();
-    data.append('eventsFile', this.uploadEvents.files[0]);
-    data.append('eventsFilename', this.uploadEvents.files[0].name);
-    data.append('locationsFile', this.uploadLocations.files[0]);
-    data.append('locationsFilename', this.uploadLocations.files[0].name);
-    // send the uploaded data to flask
-    fetch('/upload', { method: 'POST', body: data }).then(response => response.json()).then(response => {
-      console.log(response);
-      this.setState({error: response.error, errorMsg: response.msg});
-      if (!this.state.error && this.state.errorMsg !== '') {
-        this.setState({redirect: true});
-      }
-      this.setState({loading: false});
-    });
   }
 
   renderRedirect() {
@@ -80,6 +98,7 @@ class Upload extends Component {
                 </header>
                 <Form onSubmit={this.handleUploadData} className="Upload">
                   <Form.Group>
+                    <p className="formText">Input Remix events and locations data</p>
                     <Form.Row>
                       <Form.Label column>Events Data</Form.Label>
                       <Col>
@@ -95,6 +114,17 @@ class Upload extends Component {
                       <Col>
                         <Form.File id="fileInput"
                           ref={(ref) => { this.uploadLocations = ref; }}
+                          type="file"
+                        />
+                      </Col>
+                    </Form.Row>
+                    <br />
+                    <p className="formText">Or input estimated demand data from last time</p>
+                    <Form.Row id="userInput3">
+                      <Form.Label column>Demand Data</Form.Label>
+                      <Col>
+                        <Form.File id="fileInput"
+                          ref={(ref) => { this.uploadDemand = ref; }}
                           type="file"
                         />
                       </Col>
