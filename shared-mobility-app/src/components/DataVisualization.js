@@ -67,11 +67,11 @@ downloadData() {
   }
 
   render() {
-    // const rectangle = [
-    //   [41.835, -71.415],
-    //   [41.825, -71.405],
-    // ]
-    // const blackOptions = { color: 'black' }
+    const rectangle = [
+      [41.835, -71.4167107905769],
+      [41.824999999999996, -71.40329025766712],
+    ]
+    const blackOptions = { color: 'black' }
 
     // const rectangles = [
     //   {
@@ -143,7 +143,7 @@ downloadData() {
                 A pretty CSS3 popup. <br /> Easily customizable.
               </Popup>
             </Marker> */}
-            {/* <Rectangle bounds={rectangle} pathOptions={blackOptions} /> */}
+            {/*<Rectangle bounds={rectangle} pathOptions={blackOptions} />*/}
             <RectangleListTrips data={this.state.rectangles} />
           </MapContainer>
           <p className="DataVisualization-text">

@@ -31,11 +31,12 @@ def file_upload():
             response = {'error': False, 'msg': "successfully received uploaded file"}
             # set df_demand var in processor
             df_demand = pd.read_csv(demandFile)
-            if processor.is_valid_df_demand(df_demand):
-                processor.set_demand(df_demand)
-            else:
-                # return unsuccessful response
-                response = {'error': True, 'msg': "demand file missing required cols"}
+            processor.set_demand(df_demand)
+            # if processor.is_valid_df_demand(df_demand):
+            #     processor.set_demand(df_demand)
+            # else:
+            #     # return unsuccessful response
+            #     response = {'error': True, 'msg': "demand file missing required cols"}
         else:
             # return unsuccessful response
             response = {'error': True, 'msg': "invalid file extension, files needs to be CSV"}
@@ -86,7 +87,8 @@ def return_rectangles():
     # test_processor = DataProcessor()
     # rectangles = test_processor.build_shape_data()
     if processor.get_demand() is not None:
-        rectangles = processor.build_shape_data()
+        # rectangles = processor.build_shape_data()
+        rectangles = processor.build_shape_data_with_haversine()
         return {'data': rectangles}
     else:
         return {'data': []}
