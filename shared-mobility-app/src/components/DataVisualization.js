@@ -1,7 +1,7 @@
 import React, {Component} from 'react';
 import Button from 'react-bootstrap/Button';
 import './DataVisualization.css';
-import { MapContainer, TileLayer, Rectangle, Tooltip } from 'react-leaflet'
+import { MapContainer, TileLayer, Rectangle, Tooltip, LayersControl, LayerGroup } from 'react-leaflet'
 
 class DataVisualization extends Component {
   // create state variable
@@ -86,34 +86,62 @@ downloadData() {
     //   },
     // ]
 
-    const RectangleListTrips = ({ data }) => {
+    const RectangleListTrips = ({ data, log }) => {
       return (
         <span>
           {data.map((item, i) => {
             return (
-              <Rectangle key={i} bounds={item.bounds} color={item.log_trips_color}>
-                <Tooltip sticky>
-                  Lat: {item.lat}, Long: {item.lng} <br />
-                  Mean Trips/Day: {item.trips}
-                </Tooltip>
-              </Rectangle>
+              <div>
+                {log
+                  ? <div>
+                      <Rectangle key={i} bounds={item.bounds} color={item.log_trips_color}>
+                        <Tooltip sticky>
+                          Lat: {item.lat}, Long: {item.lng} <br />
+                          Mean Trips/Day: {item.trips}
+                        </Tooltip>
+                      </Rectangle>
+                    </div>
+                  : <div>
+                      <Rectangle key={i} bounds={item.bounds} color={item.trips_color}>
+                        <Tooltip sticky>
+                          Lat: {item.lat}, Long: {item.lng} <br />
+                          Mean Trips/Day: {item.trips}
+                        </Tooltip>
+                      </Rectangle>
+                    </div>
+                }
+              </div>
             );
           })}
         </span>
       );
     }
 
-    const RectangleListAdjTrips = ({ data }) => {
+    const RectangleListAdjTrips = ({ data, log }) => {
       return (
         <span>
           {data.map((item, i) => {
             return (
-              <Rectangle key={i} bounds={item.bounds} color={item.log_adj_trips_color}>
-                <Tooltip sticky>
-                  Lat: {item.lat}, Long: {item.lng} <br />
-                  Mean Trips/Day: {item.adj_trips}
-                </Tooltip>
-              </Rectangle>
+              <div>
+                {log
+                  ? <div>
+                      <Rectangle key={i} bounds={item.bounds} color={item.log_adj_trips_color}>
+                        <Tooltip sticky>
+                          Lat: {item.lat}, Long: {item.lng} <br />
+                          Mean Trips/Day: {item.adj_trips}
+                        </Tooltip>
+                      </Rectangle>
+                    </div>
+                  : <div>
+                      <Rectangle key={i} bounds={item.bounds} color={item.adj_trips_color}>
+                        <Tooltip sticky>
+                          Lat: {item.lat}, Long: {item.lng} <br />
+                          Mean Trips/Day: {item.adj_trips}
+                        </Tooltip>
+                      </Rectangle>
+                    </div>
+                }
+              </div>
             );
           })}
         </span>
@@ -138,13 +166,19 @@ downloadData() {
               attribution='&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
-            {/* <Marker position={this.state.center}>
-              <Popup>
-                A pretty CSS3 popup. <br /> Easily customizable.
-              </Popup>
-            </Marker> */}
-            {/*<Rectangle bounds={rectangle} pathOptions={blackOptions} />*/}
-            <RectangleListTrips data={this.state.rectangles} />
+            <LayersControl position="topright">
+              <LayersControl.Overlay checked name="Logged color scale">
+                {/*<Rectangle bounds={rectangle} pathOptions={blackOptions} />*/}
+                <LayerGroup>
+                  <RectangleListTrips data={this.state.rectangles} log={true} />
+                </LayerGroup>
+              </LayersControl.Overlay>
+              <LayersControl.Overlay name="Unlogged color scale">
+                <LayerGroup>
+                  <RectangleListTrips data={this.state.rectangles} log={false} />
+                </LayerGroup>
+              </LayersControl.Overlay>
+          </LayersControl>
           </MapContainer>
           <p className="DataVisualization-text">
             Scooter Estimated Demand Map
@@ -157,7 +191,19 @@ downloadData() {
               attribution='&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
-            <RectangleListAdjTrips data={this.state.rectangles} />
+            <LayersControl position="topright">
+              <LayersControl.Overlay checked name="Logged color scale">
+                {/*<Rectangle bounds={rectangle} pathOptions={blackOptions} />*/}
+                <LayerGroup>
+                  <RectangleListAdjTrips data={this.state.rectangles} log={true} />
+                </LayerGroup>
+              </LayersControl.Overlay>
+              <LayersControl.Overlay name="Unlogged color scale">
+                <LayerGroup>
+                  <RectangleListAdjTrips data={this.state.rectangles} log={false} />
+                </LayerGroup>
+              </LayersControl.Overlay>
+            </LayersControl>
           </MapContainer>
 
           <Button onClick={this.downloadData.bind(this)} id="downloadButton">Download Data</Button>
