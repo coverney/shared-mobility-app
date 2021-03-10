@@ -7,15 +7,13 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
-from math import radians, cos, sin, asin, degrees
+from Grid import Grid
 
 class DataProcessor:
 
     # TODO: would need to incorporate in __init__ or take from data
     START = "2018-11-01T06:00:00-04:00"
     END = "2019-10-31T22:00:00-04:00"
-
-    _AVG_EARTH_RADIUS_KM = 6371.0088
 
     def __init__(self, df_events=None, df_locations=None):
         """ Constructor for DataProcessor class with the inputs being the events
@@ -43,9 +41,8 @@ class DataProcessor:
     def is_valid_df_demand(self, df_demand):
         """ Check to make sure df_demand is valid in terms of its columns
         """
-        cols = ["date", "upper_lat", "lower_lat",
-                "left_long", "right_long", "avail_perc",
-                "count_time", "cdf_sum", "trips", "adj_trips"]
+        cols = ["date", "left_lng", "right_lng", "lower_lat", "upper_lat",
+                "avail_perc", "count_time", "cdf_sum", "trips", "adj_trips"]
         for col in cols:
             if col not in df_demand.columns:
                 return False
@@ -58,9 +55,9 @@ class DataProcessor:
             This function may no longer be necessary!
         """
         # select for cols we want
-        df = self.df_demand[["date", "upper_lat", "lower_lat",
-                                "left_long", "right_long", "avail_perc",
-                                "count_time", "cdf_sum", "trips", "adj_trips"]]
+        df = self.df_demand[["date", "left_lng", "right_lng", "lower_lat",
+                                "upper_lat", "avail_perc", "count_time",
+                                "cdf_sum", "trips", "adj_trips"]]
         return df
 
     def map_values_to_color(self, df, col_name):
@@ -93,8 +90,8 @@ class DataProcessor:
         for index, row in df.iterrows():
             rect_dict = {}
             # get the upper left and bottom right coordinates
-            upper_left = [row['upper_lat'], row['left_long']]
-            bottom_right = [row['lower_lat'], row['right_long']]
+            upper_left = [row['upper_lat'], row['left_lng']]
+            bottom_right = [row['lower_lat'], row['right_lng']]
             rect_dict['bounds'] = [upper_left, bottom_right]
             rect_dict['name'] = "Rectangle " + str(index)
 
@@ -110,75 +107,6 @@ class DataProcessor:
 
             rects.append(rect_dict)
         return rects
-
-    def calculate_lng_rounding_value(self, common_lat):
-        """ Use Haversine formula to calculate the distance in
-            degrees from the rounded lng to the left and right edges of the boundary box
-
-            Longitude changes by different amounts according to how far you
-            are from the equator, so this function takes in the latitude value to find that distance
-        """
-        # get distance (in km) between lat values
-        d = radians(0.01)*self._AVG_EARTH_RADIUS_KM
-        num = sin(d / (2 * self._AVG_EARTH_RADIUS_KM))
-        den = cos(radians(common_lat))
-        frac = num/den
-        return degrees(2 * asin(frac))
-
-    def get_corner_points(self, rounded_lat, rounded_lng, rounding_value = 0.01):
-        """ Calculate upper left and bottom right coordinates of lat/long bounding box
-            based on rounded lat/long values
-        """
-        # calculate bounding lat values
-        upper_lat = rounded_lat+(rounding_value/2)
-        lower_lat = rounded_lat-(rounding_value/2)
-        # calculate lng rounding values based on bounding lat values
-        upper_lng_rounding_value = self.calculate_lng_rounding_value(upper_lat)
-        lower_lng_rounding_value = self.calculate_lng_rounding_value(lower_lat)
-        # get upper left and bottom right pts
-        upper_left = (upper_lat, rounded_lng-(upper_lng_rounding_value/2))
-        bottom_right = (lower_lat, rounded_lng+(lower_lng_rounding_value/2))
-        return (upper_left, bottom_right)
-
-    def create_rectangle_lst_with_haversine(self, df):
-        """ Create list of dictionaries with each dict containing information
-            needed to create the React Leaflet rectangles (name, bounds, color)
-        """
-        rects = []
-        for index, row in df.iterrows():
-            rect_dict = {}
-            # get the upper left and bottom right coordinates
-            upper_left, bottom_right = self.get_corner_points(row['lat'], row['lng'])
-            rect_dict['bounds'] = [upper_left, bottom_right]
-            rect_dict['name'] = "Rectangle " + str(index)
-
-            rect_dict['trips_color'] = row['trips_color']
-            rect_dict['trips'] = round(row['trips'], 2)
-            rect_dict['adj_trips_color'] = row['adj_trips_color']
-            rect_dict['adj_trips'] = round(row['adj_trips'], 2)
-
-            rect_dict['log_trips_color'] = row['log_trips_color']
-            rect_dict['log_trips'] = round(row['log_trips'], 2)
-            rect_dict['log_adj_trips_color'] = row['log_adj_trips_color']
-            rect_dict['log_adj_trips'] = round(row['log_adj_trips'], 2)
-
-            rects.append(rect_dict)
-        return rects
-
-    def build_shape_data_with_haversine(self):
-        # Group demand data by lat/lng region and average across other cols
-        df = self.df_demand.groupby(['lat', 'lng'])[['avail_perc', 'count_time', 'cdf_sum', 'trips', 'adj_trips']].mean().reset_index()
-        # Create color columns
-        df = self.map_values_to_color(df, 'trips')
-        df = self.map_values_to_color(df, 'adj_trips')
-        # Create log of trips and adj_trips and generate those color cols
-        df['log_trips'] = np.log10(df['trips'])
-        df['log_adj_trips'] = np.log10(df['adj_trips'])
-        df = self.map_values_to_color(df, 'log_trips')
-        df = self.map_values_to_color(df, 'log_adj_trips')
-        # Create rectangle info
-        rectangles = self.create_rectangle_lst_with_haversine(df)
-        return rectangles
 
     def build_shape_data(self):
         """ Build shape data from rounded lat/lng regions.
@@ -186,7 +114,7 @@ class DataProcessor:
             and create corresponding hex color columns
         """
         # Group demand data by lat/lng region and average across other cols
-        df = self.df_demand.groupby(['upper_lat', 'lower_lat', 'left_long', 'right_long'])[['avail_perc', 'count_time', 'cdf_sum', 'trips', 'adj_trips']].mean().reset_index()
+        df = self.df_demand.groupby(['left_lng', 'right_lng', 'lower_lat', 'upper_lat'])[['avail_perc', 'count_time', 'cdf_sum', 'trips', 'adj_trips']].mean().reset_index()
         # print(df.head())
         # Create color columns
         df = self.map_values_to_color(df, 'trips')
@@ -200,52 +128,67 @@ class DataProcessor:
         rectangles = self.create_rectangle_lst(df)
         return rectangles
 
-    def get_bounding_lat_long(self, df_demand):
-        """ Replace rounded lat/long with bounding lat/longs in self.df_demand
-            Instead of the lat long columns, we want to have 4 cols: upper lat,
-            lower lat, left long, right long
+    # def get_bounding_lat_long(self, df_demand):
+    #     """ Replace rounded lat/long with bounding lat/longs in self.df_demand
+    #         Instead of the lat long columns, we want to have 4 cols: upper lat,
+    #         lower lat, left long, right long
+    #     """
+    #     rounding_value = 0.01
+    #     # delete lat and lng columns (if they exist)
+    #     if 'lat' in df_demand.columns:
+    #         del df_demand['lat']
+    #     if 'lng' in df_demand.columns:
+    #          del df_demand['lng']
+    #     # rename lat2 and lng2 columns
+    #     df_demand = df_demand.rename(columns={'lat2': 'lat', 'lng2': 'lng'})
+    #     # create bounding lat/long cols
+    #     df_demand['upper_lat'] = df_demand['lat']+(rounding_value/2) # north
+    #     df_demand['lower_lat'] = df_demand['lat']-rounding_value/2 # south
+    #     df_demand['left_long'] = df_demand['lng']-rounding_value/2 # west
+    #     df_demand['right_long'] = df_demand['lng']+rounding_value/2 # east
+    #     # select for cols we want
+    #     df_demand = df_demand[["date", "upper_lat", "lower_lat",
+    #                             "left_long", "right_long", "avail_perc",
+    #                             "count_time", "cdf_sum", "trips", "adj_trips"]]
+    #     return df_demand
+
+    def compute_grid_cells(self, df, distance=400):
+        """ Take in a dataframe and calculate lat/lng grid cells of a certain distance.
+            The output is Grid object
         """
-        rounding_value = 0.01
-        # delete lat and lng columns (if they exist)
-        if 'lat' in df_demand.columns:
-            del df_demand['lat']
-        if 'lng' in df_demand.columns:
-             del df_demand['lng']
-        # rename lat2 and lng2 columns
-        df_demand = df_demand.rename(columns={'lat2': 'lat', 'lng2': 'lng'})
-        # create bounding lat/long cols
-        df_demand['upper_lat'] = df_demand['lat']+(rounding_value/2) # north
-        df_demand['lower_lat'] = df_demand['lat']-rounding_value/2 # south
-        df_demand['left_long'] = df_demand['lng']-rounding_value/2 # west
-        df_demand['right_long'] = df_demand['lng']+rounding_value/2 # east
-        # select for cols we want
-        df_demand = df_demand[["date", "upper_lat", "lower_lat",
-                                "left_long", "right_long", "avail_perc",
-                                "count_time", "cdf_sum", "trips", "adj_trips"]]
-        return df_demand
+        # find corners of entire lat/ lng region and compute grid cells
+        min_lat = min(df['lat'].values)
+        min_lng = min(df['lng'].values)
+        max_lat = max(df['lat'].values)
+        max_lng = max(df['lng'].values)
+        grid = Grid(min_lat, min_lng, max_lat, max_lng, distance)
+        return grid
 
     def process_data(self):
         """ Takes in events and locations data, computes availability and pickup
             info, and estimates demand
         """
         timer_start = time.time()
-        # df_interval = pd.read_csv('../../../data_files/20210206_intervalCountsLATLNG.csv')
-        df_interval = countIntervals.count_intervals(self.df_locations, self.START, self.END)
-        print("Finished computing interval data")
-        # df_pickup = pd.read_csv('../../../data_files/20210206_pickupsLatLng.csv')
-        df_pickup = computePickupsData.compute_pickups(self.df_events, self.START, self.END)
+        # create Grid object before processing any data
+        grid = self.compute_grid_cells(self.df_locations)
+        # compute pickups data
+        df_pickup = computePickupsData.compute_pickups(self.df_events, self.START, self.END, grid)
+        # df_pickup = pd.read_csv('../../../data_files/20210310_pickupsLatLng.csv')
         print("Finished computing pickups data")
+        # count interval data
+        df_interval = countIntervals.count_intervals(self.df_locations, self.START, self.END, grid)
+        # df_interval = pd.read_csv('../../../data_files/20210310_intervalCountsLatLng.csv')
+        print("Finished computing interval data")
+        # estimate demand
         df_demand = estimateDemand.estimate_demand(self.df_events, df_pickup, df_interval, self.START, self.END)
         print("Finished estimating demand")
-        # Complete some further demand data processing
-        df_demand = self.get_bounding_lat_long(df_demand)
         timer_end = time.time()
         print('Elapsed time to process data:', (timer_end - timer_start)/60.0, 'minutes')
         self.df_demand = df_demand
         # save dataframes for testing purposes
-        # df_interval.to_csv('../../../data_files/20210216_intervalCountsLATLNG.csv', index=False)
-        # df_pickup.to_csv('../../../data_files/20210216_pickupsLatLng.csv', index=False)
-        # df_demand.to_csv('../../../data_files/20210223_demandLatLng.csv', index=False)
+        # df_interval.to_csv('../../../data_files/20210310_intervalCountsLatLng.csv', index=False)
+        # df_pickup.to_csv('../../../data_files/20210310_pickupsLatLng.csv', index=False)
+        # df_demand.to_csv('../../../data_files/20210310_demandLatLng.csv', index=False)
 
 if __name__ == '__main__':
     # eventsFile = '../../../data_files/events.csv'
@@ -257,6 +200,8 @@ if __name__ == '__main__':
     # print(processor.get_demand().shape)
 
     processor = DataProcessor()
+    df_demand = pd.read_csv('../../../data_files/20210310_demandLatLng.csv')
+    processor.set_demand(df_demand)
     rects = processor.build_shape_data()
     print(rects[:5])
     # df = processor.map_values_to_color(processor.get_demand(), 'trips')

@@ -1,7 +1,6 @@
 import pandas as pd
 import iso8601
 import utils
-import time
 
 def get_date(datetime):
     """ Extract the date from a datetime object
@@ -17,19 +16,20 @@ def clean_events_data(df, start, end):
     # only get the rows with event_type_reason == "user_pick_up" and event_time between 6 am and 10 pm
     # also make sure dates are between the start and end period
     df = df[(df['event_type_reason'] == "user_pick_up") & (df['event_time'] >= iso8601.parse_date(start)) & (df['event_time'] <= iso8601.parse_date(end))]
-    return df[['date', 'tract']].reset_index(drop=True)
+    return df[['date', 'grid_id']].reset_index(drop=True)
 
 def count_pickups(df):
     """ Group df by tract and date and count
     """
     df = df.copy()
-    return df.groupby(['tract', 'date']).size().reset_index(name="trips")
+    return df.groupby(['grid_id', 'date']).size().reset_index(name="trips")
 
-def compute_pickups(df_events, start, end):
+def compute_pickups(df_events, start, end, grid):
     """ Compute pickups data, which is the number of trips a day within
     a lat/long region
     """
-    df_events_latlng = utils.round_lat_long(df_events)
-    df_events_tracts = utils.create_fake_tract(df_events_latlng)
-    df_pickup_raw = clean_events_data(df_events_tracts, start, end)
+    df_events['coord'] = list(zip(df_events.lat, df_events.lng))
+    df_events['grid_id'], df_events['left_lng'], df_events['right_lng'], df_events['lower_lat'], df_events['upper_lat'] = \
+        zip(*df_events['coord'].apply(utils.get_grid_cell_info, grid=grid))
+    df_pickup_raw = clean_events_data(df_events, start, end)
     return count_pickups(df_pickup_raw)

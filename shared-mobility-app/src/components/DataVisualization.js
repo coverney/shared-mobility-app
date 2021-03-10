@@ -67,11 +67,15 @@ downloadData() {
   }
 
   render() {
-    const rectangle = [
-      [41.835, -71.4167107905769],
-      [41.824999999999996, -71.40329025766712],
-    ]
-    const blackOptions = { color: 'black' }
+    // const rectangle1 = [
+    //   [41.68728962127304, -71.53411609377265],
+    //   [41.68369233981814, -71.52929934359082],
+    // ]
+    // const rectangle2 = [
+    //   [41.69088690272794, -71.53411609377265],
+    //   [41.68728962127304, -71.52929907427709],
+    // ]
+    // const blackOptions = { color: 'black' }
 
     // const rectangles = [
     //   {
@@ -91,7 +95,7 @@ downloadData() {
         <span>
           {data.map((item, i) => {
             return (
-              <div>
+              <div key={i}>
                 {log
                   ? <div>
                       <Rectangle key={i} bounds={item.bounds} color={item.log_trips_color}>
@@ -122,7 +126,7 @@ downloadData() {
         <span>
           {data.map((item, i) => {
             return (
-              <div>
+              <div key={i}>
                 {log
                   ? <div>
                       <Rectangle key={i} bounds={item.bounds} color={item.log_adj_trips_color}>
@@ -157,6 +161,17 @@ downloadData() {
           <p className="DataVisualization-text">
             Scooter Number of Trips Map
           </p>
+          {/*<MapContainer
+            center={this.state.center}
+            zoom={13}
+            scrollWheelZoom={false}>
+            <TileLayer
+              attribution='&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+            <Rectangle bounds={rectangle1} pathOptions={blackOptions} />
+            <Rectangle bounds={rectangle2} pathOptions={blackOptions} />
+          </MapContainer>*/}
           <MapContainer
             center={this.state.center}
             zoom={13}
@@ -168,7 +183,6 @@ downloadData() {
             />
             <LayersControl position="topright">
               <LayersControl.Overlay checked name="Logged color scale">
-                {/*<Rectangle bounds={rectangle} pathOptions={blackOptions} />*/}
                 <LayerGroup>
                   <RectangleListTrips data={this.state.rectangles} log={true} />
                 </LayerGroup>
@@ -193,7 +207,6 @@ downloadData() {
             />
             <LayersControl position="topright">
               <LayersControl.Overlay checked name="Logged color scale">
-                {/*<Rectangle bounds={rectangle} pathOptions={blackOptions} />*/}
                 <LayerGroup>
                   <RectangleListAdjTrips data={this.state.rectangles} log={true} />
                 </LayerGroup>

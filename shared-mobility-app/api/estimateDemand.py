@@ -92,9 +92,9 @@ def calculate_avail_factors_multiple_dates(df_result, df, ecdf):
                 else:
                     cdf = ecdf(get_minutes(dates[date][-1])) - ecdf(get_minutes(dates[date][0]))
             # update values in df_result
-            df_result.loc[date, 'avail_perc'] = min(24*60, df_result.loc[date, 'avail_perc'] + avail_time)
+            df_result.loc[date, 'avail_perc'] = min(24*60, df_result.loc[date].get('avail_perc', 0) + avail_time)
             df_result.loc[date, 'count_time'] += count_time
-            df_result.loc[date, 'cdf_sum'] = min(1, df_result.loc[date, 'cdf_sum'] + cdf)
+            df_result.loc[date, 'cdf_sum'] = min(1, df_result.loc[date].get('cdf_sum', 0) + cdf)
     return df_result
 
 def calculate_avail_factors_per_tract(df, ecdf, start_date, end_date):
@@ -110,10 +110,12 @@ def calculate_avail_factors_per_tract(df, ecdf, start_date, end_date):
     # print('Number of same date intervals:', df_same_date.shape[0], 'Number of multiple date intervals', df_multiple_dates.shape[0])
 
     # create df_result dataframe with pre-populated values
-    df_result = pd.DataFrame(index=pd.date_range(start_date, end_date, freq='d'), columns=['tract', 'date', 'lat2', 'lng2'])
-    df_result['tract'] = df['tract'].values[0]
-    df_result['lat2'] = df['lat2'].values[0]
-    df_result['lng2'] = df['lng2'].values[0]
+    df_result = pd.DataFrame(index=pd.date_range(start_date, end_date, freq='d'), columns=['grid_id', 'left_lng', 'right_lng', 'lower_lat', 'upper_lat', 'date'])
+    df_result['grid_id'] = df['grid_id'].values[0]
+    df_result['left_lng'] = df['left_lng'].values[0]
+    df_result['right_lng'] = df['right_lng'].values[0]
+    df_result['lower_lat'] = df['lower_lat'].values[0]
+    df_result['upper_lat'] = df['upper_lat'].values[0]
     df_result['date'] = df_result.index
 
     # calculate avail factors on df_same_date
@@ -146,7 +148,7 @@ def calculate_avail_factors_per_tract(df, ecdf, start_date, end_date):
     # calculate percent of daily scooter usage that occurred
     df_result['cdf_sum'] = df_result['cdf_sum'] / (ecdf(24*60)-ecdf(1*60)) # used to be (ecdf(22*60)-ecdf(6*60))
 
-    df_result = df_result[['date', 'tract', 'lat2', 'lng2', 'avail_perc', 'count_time', 'cdf_sum']]
+    df_result = df_result[['date', 'grid_id', 'left_lng', 'right_lng', 'lower_lat', 'upper_lat', 'avail_perc', 'count_time', 'cdf_sum']]
     df_result = df_result.reset_index(drop=True)
     return df_result
 
@@ -154,8 +156,8 @@ def calculate_avail_factors(df, ecdf, start_date, end_date, func):
     """ Group by lat/long region and then call calculate_avail_factors_per_tract (using parallelization)
     """
     df = df.copy()
-    df_grouped = df.groupby('tract', sort=False, as_index=False) # group df by tract
-    assert len(df_grouped) == len(set(df['tract'].values))
+    df_grouped = df.groupby('grid_id', sort=False, as_index=False) # group df by grid_id
+    assert len(df_grouped) == len(set(df['grid_id'].values))
     # print('Number of groups:', len(df_grouped))
     # df_sub_grouped = [g[1] for g in list(df_grouped)[:3]] # for testing only
     with Pool(cpu_count()) as p:
@@ -175,10 +177,10 @@ def merge_demand_dfs(df_pickups, df_avail):
     df_pickups['date'] = df_pickups['date'].astype('str')
     df_avail['date'] = df_avail['date'].astype('str')
     # make sure tract columns are strings
-    df_pickups['tract'] = df_pickups['tract'].astype('str')
-    df_avail['tract'] = df_avail['tract'].astype('str')
+    df_pickups['grid_id'] = df_pickups['grid_id'].astype('str')
+    df_avail['grid_id'] = df_avail['grid_id'].astype('str')
     # merge pickups and avail factors
-    df_result = df_avail.merge(df_pickups, how='left', on=['date', 'tract'])
+    df_result = df_avail.merge(df_pickups, how='left', on=['date', 'grid_id'])
     # drop rows with no trips
     df_result = df_result[df_result['trips'].notna()]
     df_result['adj_trips'] = df_result.apply(lambda x: min_demand(x.trips, x.avail_perc, x.cdf_sum), axis=1)

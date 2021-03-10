@@ -28,7 +28,7 @@ def count_region(df, start, end):
     """
     df = df.copy()
     df = df.sort_values(by='time', ignore_index=True) # sort df by time (ascending)
-    df_interval = pd.DataFrame(index=range(df.shape[0]), columns=['tract', 'start', 'end', 'count', 'avail']) # create df_interval
+    df_interval = pd.DataFrame(index=range(df.shape[0]), columns=['grid_id', 'left_lng', 'right_lng', 'lower_lat', 'upper_lat', 'start', 'end', 'count', 'avail']) # create df_interval
     current_time = start
     current_count = 0
     for index, row in df.iterrows():
@@ -39,8 +39,11 @@ def count_region(df, start, end):
             next_count -= 2
         # if within time then record interval
         if (next_time >= start) and (current_time <= end):
-            df_interval.loc[index] = {'tract':row['tract'], 'start':current_time, 'end':next_time, 'count':current_count,
-                                    'avail':((iso8601.parse_date(next_time) - iso8601.parse_date(current_time)).total_seconds() / 60)}
+            df_interval.loc[index] = {'grid_id':row['grid_id'], 'left_lng':row['left_lng'],
+                                        'right_lng':row['right_lng'], 'lower_lat':row['lower_lat'],
+                                        'upper_lat':row['upper_lat'], 'start':current_time,
+                                        'end':next_time, 'count':current_count,
+                                        'avail':((iso8601.parse_date(next_time) - iso8601.parse_date(current_time)).total_seconds() / 60)}
         current_count = next_count
         current_time = next_time
     return df_interval
@@ -50,8 +53,8 @@ def get_count_data(df, func, start, end):
     via parallelization. Each lat/long region is treated separately
     """
     df = df.copy()
-    df_grouped = df.groupby('tract', sort=False, as_index=False) # group df by tract
-    assert len(df_grouped) == len(set(df['tract'].values))
+    df_grouped = df.groupby('grid_id', sort=False, as_index=False) # group df by grid_id
+    assert len(df_grouped) == len(set(df['grid_id'].values))
     # print('Number of groups:', len(df_grouped))
     # df_sub_grouped = [g[1] for g in list(df_grouped)[:3]] # for testing only
     with Pool(cpu_count()) as p:
@@ -59,19 +62,21 @@ def get_count_data(df, func, start, end):
         ret_list = p.map(partial(func, start=start, end=end), [group for name, group in df_grouped])
     return pd.concat(ret_list)
 
-def count_intervals(df_locations, start, end):
+def count_intervals(df_locations, start, end, grid):
     """ Generate interval data, which gives time intervals within a lat/long region
     where a certain number of scooters are available
     """
-    df_locations_latlng = utils.round_lat_long(df_locations)
-    df_locations_tracts = utils.create_fake_tract(df_locations_latlng)
-    df_locations_cleaned = prep_count_data(df_locations_tracts, start, end)
+    df_locations['coord'] = list(zip(df_locations.lat, df_locations.lng))
+    df_locations['grid_id'], df_locations['left_lng'], df_locations['right_lng'], df_locations['lower_lat'], df_locations['upper_lat'] = \
+        zip(*df_locations['coord'].apply(utils.get_grid_cell_info, grid=grid))
+    df_locations_cleaned = prep_count_data(df_locations, start, end)
     timer_start = time.time()
     df_result = get_count_data(df_locations_cleaned, count_region, start, end)
     timer_end = time.time()
     print('Elapsed time to count intervals with parallelization:', (timer_end - timer_start)/60.0, 'minutes')
     # doing some further processing before saving
-    df_result = utils.undo_fake_tract(df_result.dropna())
+    # df_result = utils.undo_fake_tract(df_result.dropna())
+    df_result = df_result.dropna() # remove Nans
     df_result['count'] = df_result['count'].astype('int64')
     df_result['avail'] = df_result['avail'].astype('float64')
     return df_result
