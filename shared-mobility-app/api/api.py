@@ -89,4 +89,5 @@ def return_rectangles():
         rectangles = processor.build_shape_data()
         return {'data': rectangles}
     else:
+        print("demand df is none")
         return {'data': []}

@@ -1,5 +1,8 @@
 import React, {Component} from 'react';
 import Button from 'react-bootstrap/Button';
+import Container from 'react-bootstrap/Container';
+import Row from 'react-bootstrap/Row';
+import Col from 'react-bootstrap/Col';
 import './DataVisualization.css';
 import { MapContainer, TileLayer, Rectangle, Tooltip, LayersControl, LayerGroup } from 'react-leaflet'
 
@@ -101,7 +104,10 @@ downloadData() {
                       <Rectangle key={i} bounds={item.bounds} color={item.log_trips_color}>
                         <Tooltip sticky>
                           Lat: {item.lat}, Long: {item.lng} <br />
-                          Mean Trips/Day: {item.trips}
+                          Mean Trips/Day: {item.trips} <br />
+                          % Daily Scooter Usage: {item.cdf_sum} <br />
+                          % Day Scooter Available: {item.avail_perc} <br />
+                          Num Days Scooters Available: {item.count_time}
                         </Tooltip>
                       </Rectangle>
                     </div>
@@ -109,7 +115,10 @@ downloadData() {
                       <Rectangle key={i} bounds={item.bounds} color={item.trips_color}>
                         <Tooltip sticky>
                           Lat: {item.lat}, Long: {item.lng} <br />
-                          Mean Trips/Day: {item.trips}
+                          Mean Trips/Day: {item.trips} <br />
+                          % Daily Scooter Usage: {item.cdf_sum} <br />
+                          % Day Scooter Available: {item.avail_perc} <br />
+                          Num Days Scooters Available: {item.count_time}
                         </Tooltip>
                       </Rectangle>
                     </div>
@@ -132,7 +141,10 @@ downloadData() {
                       <Rectangle key={i} bounds={item.bounds} color={item.log_adj_trips_color}>
                         <Tooltip sticky>
                           Lat: {item.lat}, Long: {item.lng} <br />
-                          Mean Trips/Day: {item.adj_trips}
+                          Mean Trips/Day: {item.adj_trips} <br />
+                          % Daily Scooter Usage: {item.cdf_sum} <br />
+                          % Day Scooter Available: {item.avail_perc} <br />
+                          Num Days Scooters Available: {item.count_time}
                         </Tooltip>
                       </Rectangle>
                     </div>
@@ -140,7 +152,10 @@ downloadData() {
                       <Rectangle key={i} bounds={item.bounds} color={item.adj_trips_color}>
                         <Tooltip sticky>
                           Lat: {item.lat}, Long: {item.lng} <br />
-                          Mean Trips/Day: {item.adj_trips}
+                          Mean Trips/Day: {item.adj_trips} <br />
+                          % Daily Scooter Usage: {item.cdf_sum} <br />
+                          % Day Scooter Available: {item.avail_perc} <br />
+                          Num Days Scooters Available: {item.count_time}
                         </Tooltip>
                       </Rectangle>
                     </div>
@@ -154,73 +169,81 @@ downloadData() {
 
     return (
       <>
-        <div className="DataVisualization">
-          <p className="DataVisualization-text">
-            Data visualization dashboard goes here!
-          </p>
-          <p className="DataVisualization-text">
-            Scooter Number of Trips Map
-          </p>
-          {/*<MapContainer
-            center={this.state.center}
-            zoom={13}
-            scrollWheelZoom={false}>
-            <TileLayer
-              attribution='&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
-            <Rectangle bounds={rectangle1} pathOptions={blackOptions} />
-            <Rectangle bounds={rectangle2} pathOptions={blackOptions} />
-          </MapContainer>*/}
-          <MapContainer
-            center={this.state.center}
-            zoom={13}
-            scrollWheelZoom={false}
-            whenReady={this.getRectangleData.bind(this)}>
-            <TileLayer
-              attribution='&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
-            <LayersControl position="topright">
-              <LayersControl.Overlay checked name="Logged color scale">
-                <LayerGroup>
-                  <RectangleListTrips data={this.state.rectangles} log={true} />
-                </LayerGroup>
-              </LayersControl.Overlay>
-              <LayersControl.Overlay name="Unlogged color scale">
-                <LayerGroup>
-                  <RectangleListTrips data={this.state.rectangles} log={false} />
-                </LayerGroup>
-              </LayersControl.Overlay>
-          </LayersControl>
-          </MapContainer>
-          <p className="DataVisualization-text">
-            Scooter Estimated Demand Map
-          </p>
-          <MapContainer
-            center={this.state.center}
-            zoom={13}
-            scrollWheelZoom={false}>
-            <TileLayer
-              attribution='&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
-            <LayersControl position="topright">
-              <LayersControl.Overlay checked name="Logged color scale">
-                <LayerGroup>
-                  <RectangleListAdjTrips data={this.state.rectangles} log={true} />
-                </LayerGroup>
-              </LayersControl.Overlay>
-              <LayersControl.Overlay name="Unlogged color scale">
-                <LayerGroup>
-                  <RectangleListAdjTrips data={this.state.rectangles} log={false} />
-                </LayerGroup>
-              </LayersControl.Overlay>
-            </LayersControl>
-          </MapContainer>
-
-          <Button onClick={this.downloadData.bind(this)} id="downloadButton">Download Data</Button>
-        </div>
+        <Container fluid>
+          <Row>
+            <Col xs={2} className="UserDashboard">
+              <p>
+                User dashboard where users can specify date range, parameters,
+                and download the data
+              </p>
+              <Button onClick={this.downloadData.bind(this)} id="downloadButton">Download Data</Button>
+            </Col>
+            <Col className="MapColumn">
+              <div className="DataVisualization">
+                <p className="DataVisualization-text">
+                  Scooter Number of Trips Map
+                </p>
+                {/*<MapContainer
+                  center={this.state.center}
+                  zoom={13}
+                  scrollWheelZoom={false}>
+                  <TileLayer
+                    attribution='&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  />
+                  <Rectangle bounds={rectangle1} pathOptions={blackOptions} />
+                  <Rectangle bounds={rectangle2} pathOptions={blackOptions} />
+                </MapContainer>*/}
+                <MapContainer
+                  center={this.state.center}
+                  zoom={13}
+                  scrollWheelZoom={false}
+                  whenReady={this.getRectangleData.bind(this)}>
+                  <TileLayer
+                    attribution='&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  />
+                  <LayersControl position="topright">
+                    <LayersControl.Overlay checked name="Logged color scale">
+                      <LayerGroup>
+                        <RectangleListTrips data={this.state.rectangles} log={true} />
+                      </LayerGroup>
+                    </LayersControl.Overlay>
+                    <LayersControl.Overlay name="Unlogged color scale">
+                      <LayerGroup>
+                        <RectangleListTrips data={this.state.rectangles} log={false} />
+                      </LayerGroup>
+                    </LayersControl.Overlay>
+                </LayersControl>
+                </MapContainer>
+                <p className="DataVisualization-text">
+                  Scooter Estimated Demand Map
+                </p>
+                <MapContainer
+                  center={this.state.center}
+                  zoom={13}
+                  scrollWheelZoom={false}>
+                  <TileLayer
+                    attribution='&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  />
+                  <LayersControl position="topright">
+                    <LayersControl.Overlay checked name="Logged color scale">
+                      <LayerGroup>
+                        <RectangleListAdjTrips data={this.state.rectangles} log={true} />
+                      </LayerGroup>
+                    </LayersControl.Overlay>
+                    <LayersControl.Overlay name="Unlogged color scale">
+                      <LayerGroup>
+                        <RectangleListAdjTrips data={this.state.rectangles} log={false} />
+                      </LayerGroup>
+                    </LayersControl.Overlay>
+                  </LayersControl>
+                </MapContainer>
+              </div>
+            </Col>
+          </Row>
+        </Container>
       </>
     );
   }

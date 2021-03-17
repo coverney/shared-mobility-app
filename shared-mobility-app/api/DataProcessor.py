@@ -7,6 +7,7 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
+import utils
 from Grid import Grid
 
 class DataProcessor:
@@ -51,8 +52,6 @@ class DataProcessor:
     def get_relevant_demand_cols(self):
         """ Returns the subset of self.df_demand that we want to save to a CSV
             file if the user clicks on the download data button
-
-            This function may no longer be necessary!
         """
         # select for cols we want
         df = self.df_demand[["date", "left_lng", "right_lng", "lower_lat",
@@ -82,7 +81,7 @@ class DataProcessor:
         df[color_col_name] = lut[a]
         return df
 
-    def create_rectangle_lst(self, df):
+    def create_rectangle_lst(self, df, distance=400):
         """ Create list of dictionaries with each dict containing information
             needed to create the React Leaflet rectangles (name, bounds, color)
         """
@@ -95,6 +94,11 @@ class DataProcessor:
             rect_dict['bounds'] = [upper_left, bottom_right]
             rect_dict['name'] = "Rectangle " + str(index)
 
+            # get center lat/long for tooltip
+            center_lat, center_lng = utils.add_distance(distance/2, (row['lower_lat'], row['left_lng']), "right-up")
+            rect_dict['lat'] = round(center_lat, 5)
+            rect_dict['lng'] = round(center_lng, 5)
+
             rect_dict['trips_color'] = row['trips_color']
             rect_dict['trips'] = round(row['trips'], 2)
             rect_dict['adj_trips_color'] = row['adj_trips_color']
@@ -104,6 +108,11 @@ class DataProcessor:
             rect_dict['log_trips'] = round(row['log_trips'], 2)
             rect_dict['log_adj_trips_color'] = row['log_adj_trips_color']
             rect_dict['log_adj_trips'] = round(row['log_adj_trips'], 2)
+
+            # add in avail factors
+            rect_dict['avail_perc'] = str(int(row['avail_perc']*100))+"%"
+            rect_dict['count_time'] = round(row['count_time'], 2)
+            rect_dict['cdf_sum'] = str(int(row['cdf_sum']*100))+"%"
 
             rects.append(rect_dict)
         return rects

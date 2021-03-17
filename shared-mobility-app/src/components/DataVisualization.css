@@ -1,20 +1,36 @@
+.UserDashboard {
+  text-align: center;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1.5%;
+}
+
+.MapColumn {
+  background-color: #282c34;
+}
+
 .DataVisualization {
   text-align: center;
-  background-color: #282c34;
+  /* background-color: #282c34; */
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  margin-top: 2%;
 }
 
 .DataVisualization-text {
   color: white;
+  margin-top: 1%;
+  margin-bottom: 2%;
+  font-size: 120%;
 }
 
 .leaflet-container {
-  width: 50%;
+  width: 75%;
   height: 50vh;
+  margin-bottom: 2%;
 }
 
 #downloadButton {
