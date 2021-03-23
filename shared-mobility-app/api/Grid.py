@@ -5,9 +5,10 @@ from GridCell import GridCell
 class Grid:
     """ Represents a grid of lat/long grid cells over a defined region
     """
-    def __init__(self, min_lat, min_lng, max_lat, max_lng, distance):
-        # take lower left corner of entire lat/lng region and add buffer space
+    def __init__(self, min_lat, min_lng, max_lat, max_lng, distance, cdfs):
         self.distance = distance
+        self.cdfs = cdfs # from discretized half normal
+        # take lower left corner of entire lat/lng region and add buffer space
         self.lower_left = utils.add_distance(50, (min_lat, min_lng), "left-down")
         # approximate dimensions of lat/lng region based on distance
         lower_right = utils.add_distance(50, (min_lat, max_lng), "right-down") # add buffer
@@ -17,15 +18,12 @@ class Grid:
         dist_lat = utils.haversine(upper_left, self.lower_left)*1000 # in meters
         self.num_lat = ceil(dist_lat/self.distance)
         print("num lat:", self.num_lat, "num lng:", self.num_lng)
-        # for testing
-        # self.num_lat = 2
-        # self.num_lng = 1
         # create grid cells
         grid_cell_corner = self.lower_left
         self.cells = {}
         for i in range(self.num_lat):
             for j in range(self.num_lng):
-                grid_cell = GridCell(grid_cell_corner, 400)
+                grid_cell = GridCell(grid_cell_corner, distance, cdfs.keys())
                 self.cells[(j, i)] = grid_cell
                 # move grid_cell_corner self.distance meters to right
                 grid_cell_corner = utils.add_distance(self.distance, grid_cell_corner, "right")
@@ -48,4 +46,13 @@ class Grid:
         grid_coord = (floor(dist_lng/self.distance), floor(dist_lat/self.distance))
         if grid_coord in self.cells:
             return grid_coord
+        return None
+
+    def process_data(self, df):
+        """ Takes in df of locations and events data and iterates through each row.
+            Depending on the time_type, we update the proprties of the GridCell objects accordingly.
+            Need to write data to df whenever a whole day passes
+        """
+        # can already initialize dataframe with 0s, and slowly fill in each row
+        # need to make ECDF!
         return None

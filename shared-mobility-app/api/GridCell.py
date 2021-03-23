@@ -3,7 +3,7 @@ import utils
 class GridCell:
     """ Represents a lat/long grid cell
     """
-    def __init__(self, lower_left, distance):
+    def __init__(self, lower_left, distance, dists):
         """ Create GridCell object from inputted lower_left corner and
             expected dimenions of the grid cell (assume square shape)
         """
@@ -13,6 +13,19 @@ class GridCell:
         self.upper_right = utils.add_distance(distance, self.lower_right, "up")
         self.center = utils.add_distance(distance/2, self.lower_left, "right-up")
         self.identifier = self.compute_id() # TODO: re-think format
+        # dictionary where key is distance and value is num scooters at that distance
+        self.counts_by_distance = {key: None for key in dists} # gets reset on a new day
+        # most recent time an event happened involving this grid cell
+        self.current_time = None
+        # estimated number of trips originating from the cell (from trips data)
+        self.demand_probs = 0 # gets reset on a new day
+        # number of minutes a scooter is available in this grid cell for an interval
+        # difference between end and start
+        self.avail_mins = 0
+        # sum the following product over intervals:
+        # prob a user arrives in interval (ecdf) *
+        # prob a scooter is within user threshold (from half normal distribution)
+        self.avail_cdf = 0
 
     def __str__(self):
         return "Grid cell object with center at " + self.center

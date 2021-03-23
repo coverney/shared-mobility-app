@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 from math import radians, cos, sin, asin, degrees, sqrt
 
 _AVG_EARTH_RADIUS_KM = 6371.0088
@@ -66,3 +67,31 @@ def add_distance(distance, coord, direction):
         denominator = cos(radians(lat2))
         delta_lng = degrees(2 * asin(numerator/denominator))
         return (lat2, lng-delta_lng) if "left" in direction else (lat2, lng+delta_lng)
+
+def clean_locations_data(df, start, end):
+    """ Prepare locations data to process
+    """
+    df = df.copy()
+    df = df.dropna() # remove Nans
+    df = df[(df['vehicle_status'] == "available") & (df['provider'] != "JUMP")] # select providers that aren't jump and are available
+    df = df.drop(['provider', 'vehicle_status', 'vehicle_status_reason', 'device_type', 'areas'], axis=1) # remove unneeded columns
+    df = df[((df['start_time'] >= start) & (df['start_time'] <= end)) |
+            ((df['end_time'] >= start) & (df['end_time'] <= end))] # filter out times out of the inputted range
+    df_subset = df.drop(['start_time', 'end_time'], axis=1) # drop start_time and end_time
+    # duplicate the dataframe because we are separating the start and end times
+    df_repeated_subset = pd.DataFrame(np.repeat(df_subset.values, 2, axis=0))
+    df_repeated_subset.columns = df_subset.columns
+    df_repeated_subset['time'] = df[['start_time', 'end_time']].stack().reset_index(level=[0,1], drop=True) # stack the start and end time into one column
+    df_repeated_subset['time_type'] = pd.Series(['start_time', 'end_time']*int(df_repeated_subset.shape[0]/2)) # create time_type column
+    return df_repeated_subset
+
+def clean_events_data(df, start, end):
+    """ Clean events data to just obtain relevant info
+    """
+    df = df.copy()
+    df['time'] = df['event_time']
+    df['time_type'] = 'trip'
+    # only get the rows with event_type_reason == "user_pick_up" and event_time between 6 am and 10 pm
+    # also make sure dates are between the start and end period
+    df = df[(df['event_type_reason'] == "user_pick_up") & (df['time'] >= start) & (df['time'] <= end)]
+    return df[['lat', 'lng', 'time', 'time_type']].reset_index(drop=True)
