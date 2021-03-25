@@ -12,20 +12,20 @@ class GridCell:
         self.upper_left = utils.add_distance(distance, self.lower_left, "up")
         self.upper_right = utils.add_distance(distance, self.lower_right, "up")
         self.center = utils.add_distance(distance/2, self.lower_left, "right-up")
-        self.identifier = self.compute_id() # TODO: re-think format
+        self.identifier = self.compute_id() # TODO: re-think format?
         # dictionary where key is distance and value is num scooters at that distance
-        self.counts_by_distance = {key: None for key in dists} # gets reset on a new day
+        self.counts_by_distance = {key: 0 for key in dists} # gets reset on a new day
         # most recent time an event happened involving this grid cell
-        self.current_time = None
+        self.current_time = ""
         # estimated number of trips originating from the cell (from trips data)
         self.demand_probs = 0 # gets reset on a new day
         # number of minutes a scooter is available in this grid cell for an interval
         # difference between end and start
-        self.avail_mins = 0
+        self.avail_mins = 0 # gets reset on a new interval
         # sum the following product over intervals:
         # prob a user arrives in interval (ecdf) *
         # prob a scooter is within user threshold (from half normal distribution)
-        self.avail_cdf = 0
+        self.avail_cdf = 0 # gets reset on a new day
 
     def __str__(self):
         return "Grid cell object with center at " + self.center

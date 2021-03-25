@@ -5,9 +5,10 @@ from GridCell import GridCell
 class Grid:
     """ Represents a grid of lat/long grid cells over a defined region
     """
-    def __init__(self, min_lat, min_lng, max_lat, max_lng, distance, cdfs):
+    def __init__(self, min_lat, min_lng, max_lat, max_lng, distance, cdfs, ecdf):
         self.distance = distance
         self.cdfs = cdfs # from discretized half normal
+        self.ecdf = ecdf # from event data
         # take lower left corner of entire lat/lng region and add buffer space
         self.lower_left = utils.add_distance(50, (min_lat, min_lng), "left-down")
         # approximate dimensions of lat/lng region based on distance
@@ -48,11 +49,29 @@ class Grid:
             return grid_coord
         return None
 
-    def process_data(self, df):
-        """ Takes in df of locations and events data and iterates through each row.
-            Depending on the time_type, we update the proprties of the GridCell objects accordingly.
-            Need to write data to df whenever a whole day passes
+    def find_neighbors(self, grid_coord):
+        """ Based on inputted grid_coord find all the neighboring cells.
+            The output would be a dictionary where the key is the distance
+            and the value would be a list of coords that is at that distance from grid_coord
         """
-        # can already initialize dataframe with 0s, and slowly fill in each row
-        # need to make ECDF!
+        neighbors = {0: [grid_coord]}
+        # go through other distances and calculate what neighbors would be
+        # go through cdfs, extract the triangle dimensions, and process
+        # process dimensions by adding all possible combinations and directions
+        # and seeing if the grid_coord is valid
+
+
+
+    def process_data(self, df_data, df_result):
+        """ Takes in df_data of locations and events data and iterates through each row.
+            Depending on the time_type, we update the proprties of the GridCell objects accordingly.
+            Need to write data to df_result whenever a whole day passes
+        """
+        # iterate through df_data
+        for index, row in df_data.iterrows():
+            # find out which grid cell event took place in
+            grid_coord = self.locate_point((row['lat'], row['lng']))
+            # get coords of neighborhood cells
+
+            # do differeent processing depending on whether
         return None
