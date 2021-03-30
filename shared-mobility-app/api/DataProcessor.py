@@ -4,7 +4,7 @@ import iso8601
 from statsmodels.distributions.empirical_distribution import ECDF
 import utils
 import createHalfNormal
-from Grid import Grid
+# from Grid import Grid # commented for testing
 
 class DataProcessor:
 
@@ -102,7 +102,7 @@ class DataProcessor:
         start_date = iso8601.parse_date(self.START).date()
         end_date = iso8601.parse_date(self.END).date()
         dates = pd.date_range(start_date, end_date, freq='d')
-        cells = grid.get_cells().keys()
+        cells = list(map(str, grid.get_cells().keys()))
         index = pd.MultiIndex.from_product([dates, cells], names=['date', 'grid_coord'])
         df_empty = pd.DataFrame(index=index, columns=cols)
         assert df_empty.shape[0] == (len(cells)*len(dates))
