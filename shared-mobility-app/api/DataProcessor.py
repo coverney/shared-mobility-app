@@ -50,7 +50,7 @@ class DataProcessor:
         min_lng = min(df['lng'].values)
         max_lat = max(df['lat'].values)
         max_lng = max(df['lng'].values)
-        grid = Grid(min_lat, min_lng, max_lat, max_lng, self.distance, cdfs, ecdf)
+        grid = Grid(min_lat, min_lng, max_lat, max_lng, self.distance, cdfs, ecdf, self.START)
         return grid
 
     def get_date(self, datetime):
@@ -101,6 +101,9 @@ class DataProcessor:
                     'avail_count', 'avail_mins', 'avail_cdf', 'trips', 'adj_trips']
         start_date = iso8601.parse_date(self.START).date()
         end_date = iso8601.parse_date(self.END).date()
+        # start_date = iso8601.parse_date("2018-10-31T22:00:24-04:00").date()
+        # end_date = iso8601.parse_date("2018-11-03T17:14:50-04:00").date()
+
         dates = pd.date_range(start_date, end_date, freq='d')
         cells = list(map(str, grid.get_cells().keys()))
         index = pd.MultiIndex.from_product([dates, cells], names=['date', 'grid_coord'])
@@ -116,11 +119,12 @@ class DataProcessor:
         # create Grid object before processing any data
         grid = self.compute_grid_cells(self.df_locations)
         # clean and combine events and locations data
-        # df_data = self.combine_events_and_locations()
+        df_data = self.combine_events_and_locations()
         # create empty data DataFrame that gets filled in
-        # df_empty = self.create_empty_df_result(grid)
+        df_empty = self.create_empty_df_result(grid)
         # process data within grid class
-        # df_processed = grid.process_data(df_data, df_empty)
+        df_processed = grid.process_data(df_data, df_empty)
+        df_processed.to_csv('../../../data_files/20210331_demandLatLng.csv')
         timer_end = time.time()
         print('Elapsed time to process data:', (timer_end - timer_start)/60.0, 'minutes')
 

@@ -36,7 +36,7 @@ class GridCell:
         self.avail_cdf = 0 # gets reset on a new day
 
     def __str__(self):
-        return "Grid cell object with center at " + self.center
+        return "Grid cell object with center at " + str(self.center)
 
     def compute_id(self):
         """ Compute GridCell id, which takes the first 5 decimals of lat (x)
@@ -128,6 +128,7 @@ class GridCell:
         """
         # return 0 is there is a closer scooter available
         if len([x for x in self.counts_by_distance if x < dist and self.counts_by_distance[x] > 0]) > 0:
+            # print("Closer scooter available")
             return 0
         if self.counts_by_distance[dist] < 1:
             print(f"Grid cell with id={self.identifier} has no scooters available at dist={dist} when trip occurred")
