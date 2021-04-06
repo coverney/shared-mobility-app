@@ -4,13 +4,15 @@ import iso8601
 from statsmodels.distributions.empirical_distribution import ECDF
 import utils
 import createHalfNormal
-# from Grid import Grid # commented for testing
+from Grid import Grid # commented for testing
 
 class DataProcessor:
 
     MAX_DISTANCE = 1000
-    START = "2018-11-01T06:00:00-04:00"
-    END = "2019-10-31T22:00:00-04:00"
+    # START = "2018-11-01T06:00:00-04:00"
+    # END = "2019-10-31T22:00:00-04:00"
+    START = "2019-07-01T06:00:00-04:00"
+    END = "2019-07-31T22:00:00-04:00"
 
     def __init__(self, df_events=None, df_locations=None, distance=400, p0=0.7):
         """ Constructor for DataProcessor class with the inputs being the events
@@ -108,6 +110,13 @@ class DataProcessor:
         cells = list(map(str, grid.get_cells().keys()))
         index = pd.MultiIndex.from_product([dates, cells], names=['date', 'grid_coord'])
         df_empty = pd.DataFrame(index=index, columns=cols)
+        # pre-populate values
+        df_empty['avail_count'] = 0
+        df_empty['avail_mins'] = 0
+        df_empty['avail_cdf'] = 0
+        df_empty['trips'] = 0
+        df_empty['adj_trips'] = 0
+        df_empty[['upper_lat', 'left_lng', 'lower_lat', 'right_lng']] = df_empty.apply(lambda x: grid.get_cells()[eval(x.name[-1])].get_geo_data(), axis=1, result_type="expand")
         assert df_empty.shape[0] == (len(cells)*len(dates))
         return df_empty
 
@@ -120,11 +129,13 @@ class DataProcessor:
         grid = self.compute_grid_cells(self.df_locations)
         # clean and combine events and locations data
         df_data = self.combine_events_and_locations()
+        print(df_data.shape)
         # create empty data DataFrame that gets filled in
         df_empty = self.create_empty_df_result(grid)
+        # df_empty.to_csv('../../../data_files/20210406_emptyResult.csv')
         # process data within grid class
         df_processed = grid.process_data(df_data, df_empty)
-        df_processed.to_csv('../../../data_files/20210331_demandLatLng.csv')
+        df_processed.to_csv('../../../data_files/20210406_demandLatLngSummer2.csv', index=False)
         timer_end = time.time()
         print('Elapsed time to process data:', (timer_end - timer_start)/60.0, 'minutes')
 
@@ -133,5 +144,5 @@ if __name__ == '__main__':
     locationsFile = '../../../data_files/locations_for_multiple_providers_from_18-11-01_to_19-11-01.csv'
     df_events = pd.read_csv(eventsFile)
     df_locations = pd.read_csv(locationsFile)
-    processor = DataProcessor(df_events, df_locations)
+    processor = DataProcessor(df_events, df_locations, 400, 0.75)
     processor.process_data()

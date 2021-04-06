@@ -3,9 +3,10 @@ import utils
 from GridCell import GridCell
 import iso8601
 import pandas as pd
-import createHalfNormal # for testing
-from DataProcessor import DataProcessor # for testing
-import time # for testing
+# from tqdm import tqdm # for testing
+# import createHalfNormal # for testing
+# from DataProcessor import DataProcessor # for testing
+# import time # for testing
 
 
 class Grid:
@@ -98,16 +99,19 @@ class Grid:
             Need to write data to df_result whenever a whole day passes
         """
         current_date = self.get_date_from_string(min(df_data['time']))
+        updated_grid_coords = set()
         # iterate through df_data
+        # for index, row in tqdm(df_data.iterrows(), total=df_data.shape[0]):
         for index, row in df_data.iterrows():
             # if new day, then fill in df_result for previous date
             if current_date != self.get_date_from_string(row['time']):
                 # print(f"at least one day passed from {current_date}")
-                for coord in self.cells:
+                for coord in updated_grid_coords:
                     # get dictionary of values from grid cell
                     cell_data = self.cells[coord].get_data()
                     df_result.loc[pd.IndexSlice[(current_date, str(coord))]] = pd.Series(cell_data)
                 current_date = self.get_date_from_string(row['time'])
+                updated_grid_coords = set()
             # find out which grid cell event took place in
             grid_coord = self.locate_point((row['lat'], row['lng']))
             # get coords of neighborhood cells
@@ -125,6 +129,7 @@ class Grid:
                 prob_sum = 0
                 for dist in neighbors:
                     for coord in neighbors[dist]:
+                        updated_grid_coords.add(coord)
                         prob = self.cells[coord].get_trip_prob(dist)
                         prob_sum += prob
                         probs[coord] = prob
@@ -140,40 +145,47 @@ class Grid:
             else: # if time_type is "start_time" or "end_time", then availability changed
                 for dist in neighbors:
                     for coord in neighbors[dist]:
+                        updated_grid_coords.add(coord)
                         self.cells[coord].process_interval(time_type, time, dist)
         return df_result
 
 if __name__ == '__main__':
-    # print("uncomment code for testing")
-    # create half normal distribution
-    timer_start = time.time()
-    cdfs = createHalfNormal.create_distribution(0.7, 400, 1000)
-    # create ecdf from df_events
-    processor = DataProcessor()
-    processor.set_events(pd.read_csv('../../../data_files/events.csv'))
-    ecdf = processor.calculate_cdf()
-    assert (ecdf(24*60)-ecdf(1*60)) == 1
-    # find corners of entire lat/ lng region and compute grid cells
-    min_lat = 41.82
-    min_lng = -71.44
-    max_lat = 41.83
-    max_lng = -71.43
-    START = "2018-10-31T22:00:24-04:00"
-    grid = Grid(min_lat, min_lng, max_lat, max_lng, 400, cdfs, ecdf, START)
-
-    # df_data = pd.read_csv('../../../data_files/20210331_cleanedInputDataSubset.csv')
+    print("uncomment code for testing")
+    # # create half normal distribution
+    # timer_start = time.time()
+    # cdfs = createHalfNormal.create_distribution(0.7, 400, 1000)
+    # # create ecdf from df_events
+    # processor = DataProcessor()
+    # processor.set_events(pd.read_csv('../../../data_files/events.csv'))
+    # ecdf = processor.calculate_cdf()
+    # assert (ecdf(24*60)-ecdf(1*60)) == 1
+    # # find corners of entire lat/ lng region and compute grid cells
+    # # min_lat = 41.82
+    # # min_lng = -71.44
+    # # max_lat = 41.83
+    # # max_lng = -71.43
+    # df_locations = pd.read_csv('../../../data_files/locations_for_multiple_providers_from_18-11-01_to_19-11-01.csv')
+    # min_lat = min(df_locations['lat'].values)
+    # min_lng = min(df_locations['lng'].values)
+    # max_lat = max(df_locations['lat'].values)
+    # max_lng = max(df_locations['lng'].values)
+    # # START = "2018-10-31T22:00:24-04:00"
+    # START = "2019-07-01T06:00:00-04:00"
+    # grid = Grid(min_lat, min_lng, max_lat, max_lng, 400, cdfs, ecdf, START)
+    #
+    # df_data = pd.read_csv('../../../data_files/20210406_cleanedInputDataSummerSubset.csv')
     # df_data['grid_coord'] = df_data.apply(lambda x: grid.locate_point((x.lat, x.lng)), axis=1)
     # df_data['grid_id'] = df_data.apply(lambda x: grid.get_cells()[x['grid_coord']].get_id(), axis=1)
-    # df_data.to_csv('../../../data_files/20210331_cleanedInputDataSubset2.csv', index=False)
-
-    # print(grid.get_cells()[(0,0)].get_lower_left())
-    # print(grid.get_cells()[(2,3)].get_upper_right())
-
-    # process data
-    df_empty = processor.create_empty_df_result(grid)
-    # df_empty.to_csv('../../../data_files/20210330_emptyResult.csv')
-    df_data = pd.read_csv('../../../data_files/20210331_cleanedInputDataSubset.csv')
-    df_result = grid.process_data(df_data, df_empty)
-    # df_result.to_csv('../../../data_files/20210331_demandLatLngSubset.csv')
-    timer_end = time.time()
-    print('Elapsed time to process data:', (timer_end - timer_start)/60.0, 'minutes')
+    # df_data.to_csv('../../../data_files/20210406_cleanedInputDataSummerSubset2.csv', index=False)
+    #
+    # # # print(grid.get_cells()[(0,0)].get_lower_left())
+    # # # print(grid.get_cells()[(2,3)].get_upper_right())
+    # #
+    # # # process data
+    # # df_empty = processor.create_empty_df_result(grid)
+    # # # df_empty.to_csv('../../../data_files/20210330_emptyResult.csv')
+    # # df_data = pd.read_csv('../../../data_files/20210331_cleanedInputDataSubset.csv')
+    # # df_result = grid.process_data(df_data, df_empty)
+    # # # df_result.to_csv('../../../data_files/20210331_demandLatLngSubset.csv')
+    # timer_end = time.time()
+    # print('Elapsed time to process data:', (timer_end - timer_start)/60.0, 'minutes')

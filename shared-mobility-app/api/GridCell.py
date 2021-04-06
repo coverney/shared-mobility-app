@@ -69,6 +69,11 @@ class GridCell:
     def get_upper_right(self):
         return self.upper_right
 
+    def get_geo_data(self):
+        upper_lat, left_lng = self.upper_left
+        lower_lat, right_lng = self.lower_right
+        return [round(upper_lat, 5), round(left_lng, 5), round(lower_lat, 5), round(right_lng, 5)]
+
     def get_data(self):
         """ Return dictionary of data for grid cell for one day
         """
@@ -83,7 +88,7 @@ class GridCell:
         self.demand_probs = 0
         self.avail_mins = 0
         self.avail_cdf = 0
-        # QUESTION: what do we do about self.current_time?
+        # QUESTION: what do we do about self.current_time? change it to the start of the next day
         return data
 
     def add_to_demand_prob(self, prob):
@@ -106,11 +111,13 @@ class GridCell:
             We should update counts and time last.
         """
         # update self.avail_mins
+        interval_length = ((iso8601.parse_date(next_time) - iso8601.parse_date(self.current_time)).total_seconds() / 60.0)
         if dist == 0 and self.counts_by_distance[0] > 0:
-            self.avail_mins += ((iso8601.parse_date(next_time) - iso8601.parse_date(self.current_time)).total_seconds() / 60.0)
+            self.avail_mins += interval_length
         # update self.avail_cdf
-        # QUESTION: do we want to check if count > 0 and interval length > 0.1 minute?
-        self.avail_cdf += self.cdfs[dist][0] * (self.ecdf(self.get_minutes_from_string(next_time)) - self.ecdf(self.get_minutes_from_string(self.current_time)))
+        # check if count > 0 and interval length > 0.1 minute
+        if self.counts_by_distance[dist] > 0 and interval_length > 0.1:
+            self.avail_cdf += self.cdfs[dist][0] * (self.ecdf(self.get_minutes_from_string(next_time)) - self.ecdf(self.get_minutes_from_string(self.current_time)))
         # update count
         if type == 'start_time':
             self.counts_by_distance[dist] += 1
@@ -131,6 +138,6 @@ class GridCell:
             # print("Closer scooter available")
             return 0
         if self.counts_by_distance[dist] < 1:
-            print(f"Grid cell with id={self.identifier} has no scooters available at dist={dist} when trip occurred")
+            # print(f"Grid cell with id={self.identifier} has no scooters available at dist={dist} when trip occurred")
             return 0
         return self.cdfs[dist][0]/self.counts_by_distance[dist]
