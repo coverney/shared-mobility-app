@@ -97,10 +97,16 @@ class GridCell:
         return data
 
     def set_count_at_dist(self, count, dist):
-        self.counts_by_distance[dist] = count
+        if dist == 0:
+            self.counts_by_distance[dist] = count
+        else:
+            self.counts_by_distance[dist] += count
 
     def set_current_time(self, time):
         self.current_time = time
+
+    def get_current_time(self):
+        return self.current_time
 
     def add_to_demand_prob(self, prob):
         self.demand_probs += prob
@@ -116,6 +122,14 @@ class GridCell:
 
     def values_not_zero(self):
         return any([self.avail_count_mins, self.avail_mins, self.prob_scooter_avail, self.num_trips, self.demand_probs])
+
+    def get_min_dist(self):
+        # get the distances in descending order starting from dist
+        dists = sorted(self.counts_by_distance.keys())
+        for dist in dists:
+            if self.counts_by_distance[dist] > 0:
+                return dist
+        return None
 
     def get_prob_user_accept(self, dist):
         if dist == 0:
@@ -148,7 +162,7 @@ class GridCell:
         interval_length = ((iso8601.parse_date(next_time) - iso8601.parse_date(self.current_time)).total_seconds() / 60.0)
         if interval_length < 0:
             print(f"negative interval length for next_time={next_time} and current_time={self.current_time}")
-        if dist == 0 and self.counts_by_distance[0] > 0:
+        if self.counts_by_distance[0] > 0:
             self.avail_mins += interval_length
             self.avail_count_mins += interval_length*self.counts_by_distance[0]
         # update self.prob_scooter_avail

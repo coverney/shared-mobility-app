@@ -11,12 +11,12 @@ from Grid import Grid # commented for testing
 class DataProcessor:
 
     MAX_DISTANCE = 1000
-    # START = "2018-11-01T06:00:00-04:00"
-    # END = "2019-10-31T22:00:00-04:00"
     START = "2018-11-01T06:00:00-04:00"
-    END = "2018-11-30T22:00:00-04:00"
-    # START = "2019-07-01T06:00:00-04:00"
-    # END = "2019-07-31T22:00:00-04:00"
+    END = "2019-10-31T22:00:00-04:00"
+    # START = "2018-11-01T06:00:00-04:00"
+    # END = "2018-11-30T22:00:00-04:00"
+    # START = "2019-04-01T06:00:00-04:00"
+    # END = "2019-04-22T22:00:00-04:00"
 
     def __init__(self, df_events=None, df_locations=None, distance=400, p0=0.7):
         """ Constructor for DataProcessor class with the inputs being the events
@@ -69,8 +69,8 @@ class DataProcessor:
         """
         return datetime.hour*60.0+datetime.minute+datetime.second/60
 
-    def remove_time_zone(self, time_stamp):
-        """ Remove utc offset from time zone within time_stamp
+    def parse_time_stamp(self, time_stamp):
+        """ Convert time stamp to datetime
         """
         # return iso8601.parse_date(time_stamp).replace(tzinfo=datetime.timezone.utc)
         return iso8601.parse_date(time_stamp)
@@ -79,7 +79,7 @@ class DataProcessor:
         """ Get cdf data from df_events
         """
         df = self.df_events.copy()
-        df['event_time'] = df['event_time'].apply(self.remove_time_zone) # convert strings to datetime objects
+        df['event_time'] = df['event_time'].apply(self.parse_time_stamp) # convert strings to datetime objects
         # only get the rows with event_type_reason == "user_pick_up" and event_time between 6 am and 10 pm
         # also make sure dates are between the start and end period
         df = df[(df['event_type_reason'] == "user_pick_up") & (df['event_time'] >= iso8601.parse_date(self.START)) & (df['event_time'] <= iso8601.parse_date(self.END))]
@@ -133,12 +133,12 @@ class DataProcessor:
         # clean and combine events and locations data
         df_data = self.combine_events_and_locations(grid)
         print(df_data.shape)
-        # df_data.to_csv('../../../data_files/20210414_cleanedInputDataSummerCumSum.csv', index=False)
-        # df_data = pd.read_csv('../../../data_files/20210414_cleanedInputDataCumSum.csv')
+        df_data.to_csv('../../../data_files/20210415_cleanedInputDataCumSum.csv', index=False)
+        # df_data = pd.read_csv('../../../data_files/20210415_cleanedInputDataAprilCumSum.csv')
         # process data within grid class
         df_processed = grid.process_data(df_data, 'weekly')
         # df_processed = self.calculate_demand(df_processed)
-        df_processed.to_csv('../../../data_files/20210414_demandLatLngWinter.csv')
+        df_processed.to_csv('../../../data_files/20210415_demandLatLng.csv')
         timer_end = time.time()
         print('Elapsed time to process data:', (timer_end - timer_start)/60.0, 'minutes')
 
@@ -147,5 +147,5 @@ if __name__ == '__main__':
     locationsFile = '../../../data_files/locations_for_multiple_providers_from_18-11-01_to_19-11-01.csv'
     df_events = pd.read_csv(eventsFile)
     df_locations = pd.read_csv(locationsFile)
-    processor = DataProcessor(df_events, df_locations, 400, 0.75)
+    processor = DataProcessor(df_events, df_locations, 500, 0.7)
     processor.process_data()

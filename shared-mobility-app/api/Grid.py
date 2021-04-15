@@ -132,12 +132,12 @@ class Grid:
             whole day passes
         """
         # get relevant subset of df_data
-        df_data = df_data[(df_data['time']>=time_chunk[0]) & (df_data['time']<time_chunk[-1])]
-        if df_data.shape[0] < 1:
+        df_data_sub = df_data[(df_data['time']>=time_chunk[0]) & (df_data['time']<time_chunk[-1])]
+        if df_data_sub.shape[0] < 1:
             print(f"no data within {time_chunk[0]} and {time_chunk[-1]}")
             return pd.DataFrame()
         # get the latest cumsum for each grid cell before the start of the time_chunk
-        starting_counts = df_data[(df_data['time']<time_chunk[0])].reset_index().groupby('grid_coord').max()[['cum_value']]
+        starting_counts = df_data[(df_data['time']<time_chunk[0])].reset_index().groupby('grid_coord').tail(1).set_index('grid_coord')[['cum_value']]
         assert len(starting_counts.index.values) == len(set(starting_counts.index.values))
         # generate empty df_result to populate
         df_result = self.create_empty_df_result(time_chunk[0], time_chunk[-1])
@@ -148,19 +148,18 @@ class Grid:
             for dist in neighbors:
                 for coord in neighbors[dist]:
                     self.cells[coord].set_count_at_dist(count, dist)
-        # QUESTION: double check this part
         # set current_time to start of time chunk
-        beginning = str(iso8601.parse_date(min(df_data['time'])).replace(hour=0, minute=0, second=0))
+        beginning = str(iso8601.parse_date(min(df_data_sub['time'])).replace(hour=0, minute=0, second=0))
         # print(f"beginning = {beginning}")
         for coord in self.cells:
             self.cells[coord].set_current_time(beginning)
         # start processing df_data!!
-        current_date = self.get_date_from_string(min(df_data['time']))
-        current_time = iso8601.parse_date(min(df_data['time'])).replace(hour=23, minute=59, second=59)
+        current_date = self.get_date_from_string(min(df_data_sub['time']))
+        current_time = iso8601.parse_date(min(df_data_sub['time'])).replace(hour=23, minute=59, second=59)
         updated_grid_coords = set()
         # iterate through df_data
         # for index, row in tqdm(df_data.iterrows(), total=df_data.shape[0]):
-        for index, row in df_data.iterrows():
+        for index, row in df_data_sub.iterrows():
             # if new day, then fill in df_result for previous date
             if current_date != self.get_date_from_string(row['time']):
                 # print(f"at least one day passed from {current_date} to {self.get_date_from_string(row['time'])}")
@@ -174,8 +173,9 @@ class Grid:
                 # grid cells, keep track of onces that don't have all zero values
                 for date in dates[:-1]:
                     for coord in self.cells:
-                        for dist in self.cdfs:
-                            self.cells[coord].process_interval('none', date, dist)
+                        min_dist = self.cells[coord].get_min_dist()
+                        if min_dist is not None:
+                            self.cells[coord].process_interval('none', date, min_dist)
                         if self.cells[coord].values_not_zero():
                             updated_grid_coords.add(coord)
                         # processing end of day so set current time to be start of new day
@@ -224,17 +224,19 @@ class Grid:
                         self.cells[coord].process_interval(time_type, time, dist)
         # write in leftover data
         updated_grid_coords = set()
-        final_time = (iso8601.parse_date(max(df_data['time'])) + timedelta(days=1)).replace(hour=23, minute=59, second=59)
+        final_time = (iso8601.parse_date(max(df_data_sub['time'])) + timedelta(days=1)).replace(hour=23, minute=59, second=59)
         dates = pd.date_range(current_time, final_time, freq='d')
         dates = [e.isoformat() for e in dates]
         # iterate through dates before the last one and process all the
         # grid cells, keep track of onces that don't have all zero values
         for date in dates[:-1]:
+            # print(f"writing leftover data at end for {date}")
             for coord in self.cells:
-                for dist in self.cdfs:
-                    self.cells[coord].process_interval('none', date, dist)
-                    if self.cells[coord].values_not_zero():
-                        updated_grid_coords.add(coord)
+                min_dist = self.cells[coord].get_min_dist()
+                if min_dist is not None:
+                    self.cells[coord].process_interval('none', date, min_dist)
+                if self.cells[coord].values_not_zero():
+                    updated_grid_coords.add(coord)
             # write in data for that day
             for coord in updated_grid_coords:
                 # get dictionary of values from grid cell
@@ -249,6 +251,8 @@ class Grid:
             df that will be returned
         """
         df_data['time'] = df_data['time'].apply(self.remove_time_zone)
+        df_data['grid_coord'] = df_data['grid_coord'].astype(str)
+        # return self.process_chunk((self.remove_time_zone('2019-04-15T00:00:00-04:00'), self.remove_time_zone('2019-04-16T00:00:00-04:00')), df_data)
         # get weekly/daily time chunks within cleanedInputData
         week_days = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']
         start = min(df_data['time']) #str
