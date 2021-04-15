@@ -4,6 +4,8 @@ import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';
 import Modal from 'react-bootstrap/Modal';
 import Col from 'react-bootstrap/Col';
+import Row from 'react-bootstrap/Row';
+import RangeSlider from 'react-bootstrap-range-slider';
 import './Upload.css';
 import { Redirect } from 'react-router-dom'
 import { Default } from 'react-awesome-spinners'
@@ -17,8 +19,12 @@ class Upload extends Component {
       errorMsg: '',
       redirect: false,
       loading: false,
+      askForInput: false,
+      probValue: 75,
+      distanceValue: 400
     };
     this.handleUploadData = this.handleUploadData.bind(this);
+    this.checkFiles = this.checkFiles.bind(this);
   }
 
   handleUploadData(ev) {
@@ -56,6 +62,8 @@ class Upload extends Component {
       data.append('eventsFilename', this.uploadEvents.files[0].name);
       data.append('locationsFile', this.uploadLocations.files[0]);
       data.append('locationsFilename', this.uploadLocations.files[0].name);
+      data.append('probValue', this.state.probValue);
+      data.append('distanceValue', this.state.distanceValue);
       // send the uploaded data to flask
       fetch('/upload', { method: 'POST', body: data }).then(response => response.json()).then(response => {
         console.log(response);
@@ -76,6 +84,13 @@ class Upload extends Component {
         </>
       );
     }
+  }
+
+  checkFiles() {
+    if (this.uploadEvents.files[0] != null && this.uploadLocations.files[0] != null) {
+      this.setState({askForInput: true});
+    }
+    // this.setState({askForInput: true});
   }
 
   render() {
@@ -102,7 +117,7 @@ class Upload extends Component {
                     <Form.Row>
                       <Form.Label column>Events Data</Form.Label>
                       <Col>
-                        <Form.File id="fileInput"
+                        <Form.File id="fileInput" onChange={this.checkFiles}
                           ref={(ref) => { this.uploadEvents = ref; }}
                           type="file"
                         />
@@ -112,7 +127,7 @@ class Upload extends Component {
                     <Form.Row id="userInput2">
                       <Form.Label column>Locations Data</Form.Label>
                       <Col>
-                        <Form.File id="fileInput"
+                        <Form.File id="fileInput" onChange={this.checkFiles}
                           ref={(ref) => { this.uploadLocations = ref; }}
                           type="file"
                         />
@@ -123,7 +138,7 @@ class Upload extends Component {
                     <Form.Row id="userInput3">
                       <Form.Label column>Demand Data</Form.Label>
                       <Col>
-                        <Form.File id="fileInput"
+                        <Form.File id="fileInput" onChange={this.checkFiles}
                           ref={(ref) => { this.uploadDemand = ref; }}
                           type="file"
                         />
@@ -155,6 +170,62 @@ class Upload extends Component {
           </Modal.Body>
           <Modal.Footer>
             <Button onClick={() => this.setState({error: false, errorMsg: ''})}>Close</Button>
+          </Modal.Footer>
+        </Modal>
+
+        <Modal
+          show={this.state.askForInput}
+          onHide={() => this.setState({askForInput:false})}
+          size="lg"
+          aria-labelledby="contained-modal-title-vcenter"
+          centered
+        >
+          <Modal.Header closeButton>
+            <Modal.Title id="contained-modal-title-vcenter">
+              Input Model Parameters
+            </Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <Form>
+              <Form.Label>Dimensions for one grid (in meters)</Form.Label>
+              <Form.Group as={Row}>
+                <Col xs="9">
+                  <RangeSlider
+                    value={this.state.distanceValue}
+                    onChange={e => this.setState({distanceValue: e.target.value})}
+                    min={100}
+                    max={1000}
+                  />
+                </Col>
+                <Col xs="3">
+                  <Form.Control
+                    value={this.state.distanceValue}
+                    onChange={e => this.setState({distanceValue: e.target.value})}
+                  />
+                </Col>
+              </Form.Group>
+            </Form>
+            <Form>
+              <Form.Label>Probability a user wouldn't consider a scooter that is at least one grid away </Form.Label>
+              <Form.Group as={Row}>
+                <Col xs="9">
+                  <RangeSlider
+                    value={this.state.probValue}
+                    onChange={e => this.setState({probValue: e.target.value})}
+                    tooltipLabel={currentValue => `${currentValue}%`}
+                  />
+                </Col>
+                <Col xs="3">
+                  <Form.Control
+                    value={this.state.probValue}
+                    onChange={e => this.setState({probValue: e.target.value})}
+                  />
+                </Col>
+              </Form.Group>
+            </Form>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button onClick={() => this.setState({askForInput:false})}>Submit</Button>
           </Modal.Footer>
         </Modal>
 

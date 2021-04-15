@@ -27,3 +27,7 @@
   padding: 3%;
   font-size: calc(3px + 1.5vmin);
 }
+
+.modal-header .close {
+  display:none;
+}

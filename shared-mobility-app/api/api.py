@@ -45,19 +45,22 @@ def file_upload():
         eventsFilename = eventsFile.filename
         locationsFile = request.files['locationsFile']
         locationsFilename = locationsFile.filename
+        prob = float(request.form.get('probValue'))/100.0
+        distance = int(request.form.get('distanceValue'))
+        print(f"prob {prob} and distance {distance}")
         print(f"received events file, {eventsFilename}, and locations file, {locationsFilename}, from client")
         # check file extension
         if any(ext in eventsFilename for ext in ALLOWED_EXTENSIONS) and any(ext in locationsFilename for ext in ALLOWED_EXTENSIONS):
             # valid extension, return success response
             response = {'error': False, 'msg': "successfully received uploaded files"}
-            # start processing data
-            df_events = pd.read_csv(eventsFile)
-            df_locations = pd.read_csv(locationsFile)
-            processor.set_events(df_events)
-            processor.set_locations(df_locations)
-            processor.process_data()
+            # # start processing data
+            # df_events = pd.read_csv(eventsFile)
+            # df_locations = pd.read_csv(locationsFile)
+            # processor.set_events(df_events)
+            # processor.set_locations(df_locations)
+            # processor.process_data()
             # print("Shape of demand file", processor.get_demand().shape)
-            # time.sleep(3) # sleep for 3 seconds for testing
+            time.sleep(3) # sleep for 3 seconds for testing
         else:
             # return unsuccessful response
             response = {'error': True, 'msg': "invalid file extension, both files need to be CSV"}

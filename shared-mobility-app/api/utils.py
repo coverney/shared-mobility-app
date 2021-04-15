@@ -1,6 +1,8 @@
 import pandas as pd
 import numpy as np
+import datetime
 from math import radians, cos, sin, asin, degrees, sqrt
+import iso8601
 
 _AVG_EARTH_RADIUS_KM = 6371.0088
 DIRECTIONS = ['up', 'down', 'left', 'right', 'left-down', 'left-up', 'right-down', 'right-up']
@@ -68,6 +70,11 @@ def add_distance(distance, coord, direction):
         delta_lng = degrees(2 * asin(numerator/denominator))
         return (lat2, lng-delta_lng) if "left" in direction else (lat2, lng+delta_lng)
 
+def remove_time_zone(time_stamp):
+    """ Remove utc offset from time zone within time_stamp
+    """
+    return str(iso8601.parse_date(time_stamp).replace(tzinfo=datetime.timezone.utc))
+
 def clean_locations_data(df, start, end):
     """ Prepare locations data to process
     """
@@ -82,6 +89,7 @@ def clean_locations_data(df, start, end):
     df_repeated_subset = pd.DataFrame(np.repeat(df_subset.values, 2, axis=0))
     df_repeated_subset.columns = df_subset.columns
     df_repeated_subset['time'] = df[['start_time', 'end_time']].stack().reset_index(level=[0,1], drop=True) # stack the start and end time into one column
+    # df_repeated_subset['time'] = df_repeated_subset['time'].apply(remove_time_zone)
     df_repeated_subset['time_type'] = pd.Series(['start_time', 'end_time']*int(df_repeated_subset.shape[0]/2)) # create time_type column
     return df_repeated_subset
 
@@ -90,6 +98,7 @@ def clean_events_data(df, start, end):
     """
     df = df.copy()
     df['time'] = df['event_time']
+    # df['time'] = df['event_time'].apply(remove_time_zone)
     df['time_type'] = 'trip'
     # only get the rows with event_type_reason == "user_pick_up" and event_time between 6 am and 10 pm
     # also make sure dates are between the start and end period

@@ -1,5 +1,7 @@
 import utils
 import iso8601
+# import datetime
+from datetime import timedelta
 
 class GridCell:
     """ Represents a lat/long grid cell
@@ -26,14 +28,17 @@ class GridCell:
         self.num_trips = 0
         # estimated number of trips originating from the cell (from trips data)
         self.demand_probs = 0 # gets reset on a new day
-        # number of minutes a scooter is available in this grid cell for an interval
+        # number of minutes a scooter is available in this grid cell for the day
         # sum of differences between end and start (if count at 0 dist > 0)
-        # basically it's the number of minutes a scooter is in this grid cell
+        # basically it's the number of minutes >= 1 scooter is in this grid cell
         self.avail_mins = 0 # gets reset on a new day
+        # used to get average number of scooters in the day
+        # value is avail_mins * the number of scooters
+        self.avail_count_mins = 0 # gets reset on a new day
         # sum the following product over intervals:
         # prob a user arrives in interval (ecdf) *
         # prob a scooter is within user threshold (from half normal distribution)
-        self.avail_cdf = 0 # gets reset on a new day
+        self.prob_scooter_avail = 0 # gets reset on a new day
 
     def __str__(self):
         return "Grid cell object with center at " + str(self.center)
@@ -81,15 +86,21 @@ class GridCell:
         lower_lat, right_lng = self.lower_right
         data = {'left_lng':round(left_lng, 5), 'right_lng':round(right_lng, 5),
                 'lower_lat':round(lower_lat, 5), 'upper_lat':round(upper_lat, 5),
-                'avail_count':self.counts_by_distance[0], 'avail_mins':self.avail_mins,
-                'avail_cdf':self.avail_cdf, 'trips':self.num_trips, 'adj_trips':self.demand_probs}
+                'avail_count':self.avail_count_mins/(24*60), 'avail_mins':self.avail_mins,
+                'prob_scooter_avail':self.prob_scooter_avail, 'trips':self.num_trips, 'adj_trips':self.demand_probs}
         # reset values
         self.num_trips = 0
         self.demand_probs = 0
         self.avail_mins = 0
-        self.avail_cdf = 0
-        # QUESTION: what do we do about self.current_time? change it to the start of the next day
+        self.prob_scooter_avail = 0
+        self.avail_count_mins = 0
         return data
+
+    def set_count_at_dist(self, count, dist):
+        self.counts_by_distance[dist] = count
+
+    def set_current_time(self, time):
+        self.current_time = time
 
     def add_to_demand_prob(self, prob):
         self.demand_probs += prob
@@ -103,28 +114,63 @@ class GridCell:
         t = iso8601.parse_date(time_stamp)
         return (t.hour*60.0+t.minute+t.second/60.0)
 
+    def values_not_zero(self):
+        return any([self.avail_count_mins, self.avail_mins, self.prob_scooter_avail, self.num_trips, self.demand_probs])
+
+    def get_prob_user_accept(self, dist):
+        if dist == 0:
+            return 1
+        else:
+            # get the distances in descending order starting from dist
+            dists = [x for x in sorted(self.counts_by_distance.keys(), reverse=True) if x <= dist]
+            min_dist = dist
+            next_idx = 1
+            for index, d in enumerate(dists):
+                if d < min_dist and self.counts_by_distance[d] > 0:
+                    min_dist = d
+                    next_idx = index+1
+            if next_idx >= len(dists):
+                return 1
+            else:
+                # get the distance threshold before min_dist
+                return 1 - (self.cdfs[dists[next_idx]][0])
+
     def process_interval(self, type, next_time, dist):
-        """ Type is either 'start_time' or 'end_time'. If it's 'start_time', then
+        """ Type is either 'start_time' or 'end_time' or 'none'. If it's 'start_time', then
             we want to increase self.counts_by_distance[dist] by 1.
             If it's 'end_time', then we want to decrease by 1. We also want to
-            update self.avail_mins and self.avail_cdf before updating self.current_time.
+            update self.avail_mins and self.prob_scooter_avail before updating self.current_time.
             We should update counts and time last.
         """
+        if iso8601.parse_date(next_time).date() != iso8601.parse_date(self.current_time).date():
+            print(f"for type={type}, next_time={next_time} and current_time={self.current_time} not on same day")
         # update self.avail_mins
         interval_length = ((iso8601.parse_date(next_time) - iso8601.parse_date(self.current_time)).total_seconds() / 60.0)
+        if interval_length < 0:
+            print(f"negative interval length for next_time={next_time} and current_time={self.current_time}")
         if dist == 0 and self.counts_by_distance[0] > 0:
             self.avail_mins += interval_length
-        # update self.avail_cdf
+            self.avail_count_mins += interval_length*self.counts_by_distance[0]
+        # update self.prob_scooter_avail
         # check if count > 0 and interval length > 0.1 minute
         if self.counts_by_distance[dist] > 0 and interval_length > 0.1:
-            self.avail_cdf += self.cdfs[dist][0] * (self.ecdf(self.get_minutes_from_string(next_time)) - self.ecdf(self.get_minutes_from_string(self.current_time)))
+            prob_user_accept = self.get_prob_user_accept(dist)
+            cdf_diff = self.ecdf(self.get_minutes_from_string(next_time)) - self.ecdf(self.get_minutes_from_string(self.current_time))
+            # all the probs should be positive
+            if prob_user_accept < 0:
+                print(f"prob user accept scooter is negative: {prob_user_accept}")
+            if cdf_diff < 0:
+                print(f"cdf for interval is negative: {cdf_diff} from {self.current_time} to {next_time}")
+            self.prob_scooter_avail += prob_user_accept * cdf_diff
+            # prob user accept: take cdf of one before the min distance and subtract from 1 (reference Alice's drawing)
         # update count
         if type == 'start_time':
             self.counts_by_distance[dist] += 1
-        else:
+        elif type == 'end_time':
             self.counts_by_distance[dist] -= 1
         # update time
-        self.current_time = next_time
+        if type != 'none':
+            self.current_time = next_time
 
     def get_trip_prob(self, dist):
         """ Get the probability a user would choose a scooter at dist away from

@@ -1,6 +1,8 @@
 import pandas as pd
 import time
+import numpy as np
 import iso8601
+import datetime
 from statsmodels.distributions.empirical_distribution import ECDF
 import utils
 import createHalfNormal
@@ -11,8 +13,10 @@ class DataProcessor:
     MAX_DISTANCE = 1000
     # START = "2018-11-01T06:00:00-04:00"
     # END = "2019-10-31T22:00:00-04:00"
-    START = "2019-07-01T06:00:00-04:00"
-    END = "2019-07-31T22:00:00-04:00"
+    START = "2018-11-01T06:00:00-04:00"
+    END = "2018-11-30T22:00:00-04:00"
+    # START = "2019-07-01T06:00:00-04:00"
+    # END = "2019-07-31T22:00:00-04:00"
 
     def __init__(self, df_events=None, df_locations=None, distance=400, p0=0.7):
         """ Constructor for DataProcessor class with the inputs being the events
@@ -65,11 +69,17 @@ class DataProcessor:
         """
         return datetime.hour*60.0+datetime.minute+datetime.second/60
 
+    def remove_time_zone(self, time_stamp):
+        """ Remove utc offset from time zone within time_stamp
+        """
+        # return iso8601.parse_date(time_stamp).replace(tzinfo=datetime.timezone.utc)
+        return iso8601.parse_date(time_stamp)
+
     def get_cdf_data(self):
         """ Get cdf data from df_events
         """
         df = self.df_events.copy()
-        df['event_time'] = df['event_time'].apply(iso8601.parse_date) # convert strings to datetime objects
+        df['event_time'] = df['event_time'].apply(self.remove_time_zone) # convert strings to datetime objects
         # only get the rows with event_type_reason == "user_pick_up" and event_time between 6 am and 10 pm
         # also make sure dates are between the start and end period
         df = df[(df['event_type_reason'] == "user_pick_up") & (df['event_time'] >= iso8601.parse_date(self.START)) & (df['event_time'] <= iso8601.parse_date(self.END))]
@@ -85,7 +95,7 @@ class DataProcessor:
         df_cdf = self.get_cdf_data()
         return ECDF(df_cdf['minute'])
 
-    def combine_events_and_locations(self):
+    def combine_events_and_locations(self, grid):
         """ Clean up locations and events data and then concat the two dfs
             and sort the time column
         """
@@ -96,29 +106,22 @@ class DataProcessor:
         # combine and sort
         df_both = pd.concat([df_locations_cleaned, df_events_cleaned])
         # also sort time_type since want trips to be first when time is tied
-        return df_both.sort_values(by=['time', 'time_type'], ascending=[True, False])
+        df_both = df_both.sort_values(by=['time', 'time_type'], ascending=[True, False])
+        # include grid data
+        df_both['grid_coord'] = df_both.apply(lambda x: grid.locate_point((x.lat, x.lng)), axis=1)
+        df_both['grid_id'] = df_both.apply(lambda x: grid.get_cells()[x['grid_coord']].get_id(), axis=1)
+        return self.find_cum_sum(df_both)
 
-    def create_empty_df_result(self, grid):
-        cols = ['left_lng', 'right_lng', 'lower_lat', 'upper_lat',
-                    'avail_count', 'avail_mins', 'avail_cdf', 'trips', 'adj_trips']
-        start_date = iso8601.parse_date(self.START).date()
-        end_date = iso8601.parse_date(self.END).date()
-        # start_date = iso8601.parse_date("2018-10-31T22:00:24-04:00").date()
-        # end_date = iso8601.parse_date("2018-11-03T17:14:50-04:00").date()
+    def find_cum_sum(self, df):
+        df.loc[(df['time_type'] == 'trip'), 'value'] = 0
+        df.loc[(df['time_type'] == 'start_time'), 'value'] = 1
+        df.loc[(df['time_type'] == 'end_time'), 'value'] = -1
+        df['cum_value'] = df.groupby('grid_coord')['value'].cumsum()
+        return df
 
-        dates = pd.date_range(start_date, end_date, freq='d')
-        cells = list(map(str, grid.get_cells().keys()))
-        index = pd.MultiIndex.from_product([dates, cells], names=['date', 'grid_coord'])
-        df_empty = pd.DataFrame(index=index, columns=cols)
-        # pre-populate values
-        df_empty['avail_count'] = 0
-        df_empty['avail_mins'] = 0
-        df_empty['avail_cdf'] = 0
-        df_empty['trips'] = 0
-        df_empty['adj_trips'] = 0
-        df_empty[['upper_lat', 'left_lng', 'lower_lat', 'right_lng']] = df_empty.apply(lambda x: grid.get_cells()[eval(x.name[-1])].get_geo_data(), axis=1, result_type="expand")
-        assert df_empty.shape[0] == (len(cells)*len(dates))
-        return df_empty
+    # def calculate_demand(self, df):
+    #     df['estimated_demand'] = df['adj_trips'].divide(df['prob_scooter_avail'].where(df['prob_scooter_avail'] != 0, np.nan))
+    #     return df
 
     def process_data(self):
         """ Computes availability and pickup info and estimates demand.
@@ -128,14 +131,14 @@ class DataProcessor:
         # create Grid object before processing any data
         grid = self.compute_grid_cells(self.df_locations)
         # clean and combine events and locations data
-        df_data = self.combine_events_and_locations()
+        df_data = self.combine_events_and_locations(grid)
         print(df_data.shape)
-        # create empty data DataFrame that gets filled in
-        df_empty = self.create_empty_df_result(grid)
-        # df_empty.to_csv('../../../data_files/20210406_emptyResult.csv')
+        # df_data.to_csv('../../../data_files/20210414_cleanedInputDataSummerCumSum.csv', index=False)
+        # df_data = pd.read_csv('../../../data_files/20210414_cleanedInputDataCumSum.csv')
         # process data within grid class
-        df_processed = grid.process_data(df_data, df_empty)
-        df_processed.to_csv('../../../data_files/20210406_demandLatLngSummer2.csv', index=False)
+        df_processed = grid.process_data(df_data, 'weekly')
+        # df_processed = self.calculate_demand(df_processed)
+        df_processed.to_csv('../../../data_files/20210414_demandLatLngWinter.csv')
         timer_end = time.time()
         print('Elapsed time to process data:', (timer_end - timer_start)/60.0, 'minutes')
 
