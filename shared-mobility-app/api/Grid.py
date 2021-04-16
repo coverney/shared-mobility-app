@@ -142,6 +142,8 @@ class Grid:
         # generate empty df_result to populate
         df_result = self.create_empty_df_result(time_chunk[0], time_chunk[-1])
         # update the counts for all the grid cells in starting_counts
+        for grid_coord in self.cells:
+            self.cells[grid_coord].set_all_counts_zero()
         for grid_coord in starting_counts.index:
             count = starting_counts.loc[grid_coord, 'cum_value']
             neighbors = self.find_neighbors(eval(grid_coord))
@@ -222,6 +224,7 @@ class Grid:
                 for dist in neighbors:
                     for coord in neighbors[dist]:
                         self.cells[coord].process_interval(time_type, time, dist)
+        
         # write in leftover data
         updated_grid_coords = set()
         final_time = (iso8601.parse_date(max(df_data_sub['time'])) + timedelta(days=1)).replace(hour=23, minute=59, second=59)

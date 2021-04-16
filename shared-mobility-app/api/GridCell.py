@@ -96,6 +96,13 @@ class GridCell:
         self.avail_count_mins = 0
         return data
 
+    def get_count_at_dist(self, count, dist):
+        return self.counts_by_distance[dist] 
+    
+    def set_all_counts_zero(self):
+        for dist in self.counts_by_distance:
+            self.counts_by_distance[dist] = 0
+    
     def set_count_at_dist(self, count, dist):
         if dist == 0:
             self.counts_by_distance[dist] = count
@@ -124,7 +131,7 @@ class GridCell:
         return any([self.avail_count_mins, self.avail_mins, self.prob_scooter_avail, self.num_trips, self.demand_probs])
 
     def get_min_dist(self):
-        # get the distances in descending order starting from dist
+        # get the distances in ascending order starting from dist
         dists = sorted(self.counts_by_distance.keys())
         for dist in dists:
             if self.counts_by_distance[dist] > 0:
@@ -134,20 +141,25 @@ class GridCell:
     def get_prob_user_accept(self, dist):
         if dist == 0:
             return 1
-        else:
-            # get the distances in descending order starting from dist
-            dists = [x for x in sorted(self.counts_by_distance.keys(), reverse=True) if x <= dist]
-            min_dist = dist
-            next_idx = 1
-            for index, d in enumerate(dists):
-                if d < min_dist and self.counts_by_distance[d] > 0:
-                    min_dist = d
-                    next_idx = index+1
-            if next_idx >= len(dists):
-                return 1
-            else:
-                # get the distance threshold before min_dist
-                return 1 - (self.cdfs[dists[next_idx]][0])
+        if self.get_min_dist() is not None:
+            if self.get_min_dist() < dist:
+                return 0
+
+        # get the distances in descending order starting from dist
+        dists = [x for x in sorted(self.counts_by_distance.keys(), reverse=True) if x <= dist]
+        prob = 1 - (self.cdfs[dists[1]][0])
+        return prob
+            #min_dist = dist
+            #next_idx = 1
+            #for index, d in enumerate(dists):
+            #    if d < min_dist and self.counts_by_distance[d] > 0:
+            #        min_dist = d
+            #        next_idx = index+1
+            #if next_idx >= len(dists):
+            #    return 1
+            #else:
+            #    # get the distance threshold before min_dist
+            #    return 1 - (self.cdfs[dists[next_idx]][0])
 
     def process_interval(self, type, next_time, dist):
         """ Type is either 'start_time' or 'end_time' or 'none'. If it's 'start_time', then
@@ -167,8 +179,8 @@ class GridCell:
             self.avail_count_mins += interval_length*self.counts_by_distance[0]
         # update self.prob_scooter_avail
         # check if count > 0 and interval length > 0.1 minute
-        if self.counts_by_distance[dist] > 0 and interval_length > 0.1:
-            prob_user_accept = self.get_prob_user_accept(dist)
+        if (self.get_min_dist() is not None) and (interval_length > 0.1):
+            prob_user_accept = self.get_prob_user_accept(self.get_min_dist())
             cdf_diff = self.ecdf(self.get_minutes_from_string(next_time)) - self.ecdf(self.get_minutes_from_string(self.current_time))
             # all the probs should be positive
             if prob_user_accept < 0:
@@ -194,10 +206,10 @@ class GridCell:
             Return 0 if there is a closer scooter (greedy perspective)
         """
         # return 0 is there is a closer scooter available
-        if len([x for x in self.counts_by_distance if x < dist and self.counts_by_distance[x] > 0]) > 0:
+        if (self.get_min_dist() is not None) and (self.get_min_dist() < dist):
             # print("Closer scooter available")
             return 0
         if self.counts_by_distance[dist] < 1:
             # print(f"Grid cell with id={self.identifier} has no scooters available at dist={dist} when trip occurred")
             return 0
-        return self.cdfs[dist][0]/self.counts_by_distance[dist]
+        return self.get_prob_user_accept(dist)/self.counts_by_distance[dist]

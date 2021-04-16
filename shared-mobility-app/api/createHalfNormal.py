@@ -38,13 +38,14 @@ def generate_cdfs(sigma, distance, max_distance, checkNorm=True, returnTriangles
     cdfs = {}
     prob_sum = 0
     for left, right in zip(distances, distances[1:]):
-        prob = rv.cdf(right) - rv.cdf(left)
-        prob_sum += prob
-        cdfs[left] = prob
+        prob_sum = rv.cdf(right)-rv.cdf(0) 
+        cdfs[left] = prob_sum
+    
     # normalize cdfs
     norm_cdfs = {k: v / prob_sum for k, v in cdfs.items()}
-    if checkNorm:
-        assert int(round(sum(norm_cdfs.values(), 0.0))) == 1
+
+    #if checkNorm:
+    #    assert int(round(sum(norm_cdfs.values(), 0.0))) == 1
     if returnTriangles:
         # combine triangles into norm_cdfs
         ds = [norm_cdfs, triangles]

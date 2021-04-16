@@ -133,18 +133,18 @@ class DataProcessor:
         # clean and combine events and locations data
         df_data = self.combine_events_and_locations(grid)
         print(df_data.shape)
-        df_data.to_csv('../../../data_files/20210415_cleanedInputDataCumSum.csv', index=False)
+        df_data.to_csv('../../data_files/20210415_cleanedInputDataCumSum.csv', index=False)
         # df_data = pd.read_csv('../../../data_files/20210415_cleanedInputDataAprilCumSum.csv')
         # process data within grid class
         df_processed = grid.process_data(df_data, 'weekly')
         # df_processed = self.calculate_demand(df_processed)
-        df_processed.to_csv('../../../data_files/20210415_demandLatLng.csv')
+        df_processed.to_csv('../../data_files/20210415_demandLatLng.csv')
         timer_end = time.time()
         print('Elapsed time to process data:', (timer_end - timer_start)/60.0, 'minutes')
 
 if __name__ == '__main__':
-    eventsFile = '../../../data_files/events.csv'
-    locationsFile = '../../../data_files/locations_for_multiple_providers_from_18-11-01_to_19-11-01.csv'
+    eventsFile = '../../data_files/events.csv'
+    locationsFile = '../../data_files/locations_for_multiple_providers_from_18-11-01_to_19-11-01.csv'
     df_events = pd.read_csv(eventsFile)
     df_locations = pd.read_csv(locationsFile)
     processor = DataProcessor(df_events, df_locations, 500, 0.7)
