@@ -58,15 +58,32 @@ downloadData() {
 
   getRectangleData() {
     fetch('/return-rectangles').then(res => res).then(data => {
-      console.log(data);
-      var a = data.body.getReader();
-      a.read().then(({ done, value }) => {
-        var raw_data = new TextDecoder("utf-8").decode(value);
-        // console.log(raw_data);
-        var rects = JSON.parse(raw_data).data
-        this.setState({rectangles: rects});
+      var reader = data.body.getReader();
+      return new ReadableStream({
+        start(controller) {
+          return pump();
+          function pump() {
+            return reader.read().then(({ done, value }) => {
+              // When no more data needs to be consumed, close the stream
+              if (done) {
+                  console.log("Stream complete");
+                  controller.close();
+                  return;
+              }
+              // Enqueue the next data chunk into our target stream
+              controller.enqueue(value);
+              return pump();
+            });
+          }
+        }
       })
-    });
+    })
+    .then(stream => new Response(stream))
+    .then(response => response.json())
+    .then(json => {
+      // console.log(json.data[0]);
+      this.setState({rectangles: json.data});
+    })
   }
 
   render() {
@@ -102,24 +119,24 @@ downloadData() {
                 {log
                   ? <div>
                       <Rectangle key={i} bounds={item.bounds} color={item.log_trips_color}>
-                        <Tooltip sticky>
+                        {/*<Tooltip sticky>
                           Lat: {item.lat}, Long: {item.lng} <br />
                           Mean Trips/Day: {item.trips} <br />
                           % Daily Scooter Usage: {item.cdf_sum} <br />
                           % Day Scooter Available: {item.avail_perc} <br />
                           Num Days Scooters Available: {item.count_time}
-                        </Tooltip>
+                        </Tooltip>*/}
                       </Rectangle>
                     </div>
                   : <div>
                       <Rectangle key={i} bounds={item.bounds} color={item.trips_color}>
-                        <Tooltip sticky>
+                        {/*<Tooltip sticky>
                           Lat: {item.lat}, Long: {item.lng} <br />
                           Mean Trips/Day: {item.trips} <br />
                           % Daily Scooter Usage: {item.cdf_sum} <br />
                           % Day Scooter Available: {item.avail_perc} <br />
                           Num Days Scooters Available: {item.count_time}
-                        </Tooltip>
+                        </Tooltip>*/}
                       </Rectangle>
                     </div>
                 }
@@ -139,24 +156,24 @@ downloadData() {
                 {log
                   ? <div>
                       <Rectangle key={i} bounds={item.bounds} color={item.log_adj_trips_color}>
-                        <Tooltip sticky>
+                        {/*<Tooltip sticky>
                           Lat: {item.lat}, Long: {item.lng} <br />
                           Mean Trips/Day: {item.adj_trips} <br />
                           % Daily Scooter Usage: {item.cdf_sum} <br />
                           % Day Scooter Available: {item.avail_perc} <br />
                           Num Days Scooters Available: {item.count_time}
-                        </Tooltip>
+                        </Tooltip>*/}
                       </Rectangle>
                     </div>
                   : <div>
                       <Rectangle key={i} bounds={item.bounds} color={item.adj_trips_color}>
-                        <Tooltip sticky>
+                        {/*<Tooltip sticky>
                           Lat: {item.lat}, Long: {item.lng} <br />
                           Mean Trips/Day: {item.adj_trips} <br />
                           % Daily Scooter Usage: {item.cdf_sum} <br />
                           % Day Scooter Available: {item.avail_perc} <br />
                           Num Days Scooters Available: {item.count_time}
-                        </Tooltip>
+                        </Tooltip>*/}
                       </Rectangle>
                     </div>
                 }

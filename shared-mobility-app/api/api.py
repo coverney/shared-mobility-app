@@ -53,14 +53,16 @@ def file_upload():
         if any(ext in eventsFilename for ext in ALLOWED_EXTENSIONS) and any(ext in locationsFilename for ext in ALLOWED_EXTENSIONS):
             # valid extension, return success response
             response = {'error': False, 'msg': "successfully received uploaded files"}
-            # # start processing data
-            # df_events = pd.read_csv(eventsFile)
-            # df_locations = pd.read_csv(locationsFile)
-            # processor.set_events(df_events)
-            # processor.set_locations(df_locations)
-            # processor.process_data()
+            # start processing data
+            df_events = pd.read_csv(eventsFile)
+            df_locations = pd.read_csv(locationsFile)
+            processor.set_events(df_events)
+            processor.set_locations(df_locations)
+            processor.set_p0(prob)
+            processor.set_distance(distance)
+            processor.process_data()
             # print("Shape of demand file", processor.get_demand().shape)
-            time.sleep(3) # sleep for 3 seconds for testing
+            # time.sleep(3) # sleep for 3 seconds for testing
         else:
             # return unsuccessful response
             response = {'error': True, 'msg': "invalid file extension, both files need to be CSV"}
@@ -68,7 +70,6 @@ def file_upload():
 
 @app.route('/return-demand-file', methods=['GET'])
 def return_demand_file():
-    # demand_list = pd.read_csv('../../../data_files/20210223_demandLatLng.csv').to_dict('records', into=OrderedDict)
     demand_list = processor.get_relevant_demand_cols().to_dict('records', into=OrderedDict)
     return excel.make_response_from_records(demand_list, file_type='csv')
 

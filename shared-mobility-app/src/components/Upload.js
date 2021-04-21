@@ -20,7 +20,7 @@ class Upload extends Component {
       redirect: false,
       loading: false,
       askForInput: false,
-      probValue: 75,
+      probValue: 100,
       distanceValue: 400
     };
     this.handleUploadData = this.handleUploadData.bind(this);
@@ -192,7 +192,7 @@ class Upload extends Component {
                 <Col xs="9">
                   <RangeSlider
                     value={this.state.distanceValue}
-                    onChange={e => this.setState({distanceValue: e.target.value})}
+                    onChange={e => this.setState({distanceValue: e.target.value, probValue: 100})}
                     min={100}
                     max={1000}
                   />
@@ -200,7 +200,7 @@ class Upload extends Component {
                 <Col xs="3">
                   <Form.Control
                     value={this.state.distanceValue}
-                    onChange={e => this.setState({distanceValue: e.target.value})}
+                    onChange={e => this.setState({distanceValue: e.target.value, probValue: 100})}
                   />
                 </Col>
               </Form.Group>
@@ -212,6 +212,8 @@ class Upload extends Component {
                   <RangeSlider
                     value={this.state.probValue}
                     onChange={e => this.setState({probValue: e.target.value})}
+                    min={Math.ceil((this.state.distanceValue/10)+5)}
+                    max={100}
                     tooltipLabel={currentValue => `${currentValue}%`}
                   />
                 </Col>
