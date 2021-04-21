@@ -168,7 +168,7 @@ class DataProcessor:
             i += 1
         # Create Rectangle information
         rectangles = self.create_rectangle_lst(df, factors)
-        return rectangles
+        return rectangles, start, end
 
     def compute_grid_cells(self, df):
         """ Take in a dataframe and calculate lat/lng grid cells of a certain distance.

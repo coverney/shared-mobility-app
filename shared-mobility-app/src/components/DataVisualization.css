@@ -7,6 +7,7 @@
 
 .MapColumn {
   background-color: #282c34;
+  min-height: 100vh;
 }
 
 .DataVisualization {
@@ -33,6 +34,15 @@
   margin-bottom: 2%;
 }
 
+.mapCheckbox {
+  text-align: left;
+  margin-left: 10%;
+}
+
 #downloadButton {
   margin-top: 1%;
+}
+
+#dateInput {
+  text-align: center;
 }

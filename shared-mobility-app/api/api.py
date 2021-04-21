@@ -6,6 +6,7 @@ import pandas as pd
 import flask_excel as excel
 from collections import OrderedDict
 import time # to add time delay for testing
+from datetime import datetime
 
 ALLOWED_EXTENSIONS = set(['.csv'])
 
@@ -73,7 +74,7 @@ def return_demand_file():
     demand_list = processor.get_relevant_demand_cols().to_dict('records', into=OrderedDict)
     return excel.make_response_from_records(demand_list, file_type='csv')
 
-@app.route('/return-rectangles', methods=['GET'])
+@app.route('/return-rectangles', methods=['POST', 'GET'])
 def return_rectangles():
     # rectangles = [
     #   {
@@ -90,8 +91,19 @@ def return_rectangles():
     # test_processor = DataProcessor()
     # rectangles = test_processor.build_shape_data()
     if processor.get_demand() is not None:
-        rectangles = processor.build_shape_data()
-        return {'data': rectangles}
+        if request.method == 'POST':
+            start = str(request.form.get('start'))
+            end = str(request.form.get('end'))
+            # start and end need to be formated as YYYY-MM-DD
+            start = datetime.strptime(start, "%m/%d/%Y").strftime('%Y-%m-%d')
+            end = datetime.strptime(end, "%m/%d/%Y").strftime('%Y-%m-%d')
+            rectangles, start, end = processor.build_shape_data(start, end)
+        else:
+            rectangles, start, end = processor.build_shape_data()
+        # start and end need to be formated as MM/DD/YYYY
+        start = datetime.strptime(start, '%Y-%m-%d').strftime("%m/%d/%Y")
+        end = datetime.strptime(end, '%Y-%m-%d').strftime("%m/%d/%Y")
+        return {'data': rectangles, 'start': start, 'end': end}
     else:
         print("demand df is none")
         return {'data': []}

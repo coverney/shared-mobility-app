@@ -206,7 +206,7 @@ class Upload extends Component {
               </Form.Group>
             </Form>
             <Form>
-              <Form.Label>Probability a user wouldn't consider a scooter that is at least one grid away </Form.Label>
+              <Form.Label>Probability (%) a user wouldn't consider a scooter that is at least one grid away </Form.Label>
               <Form.Group as={Row}>
                 <Col xs="9">
                   <RangeSlider
