@@ -82,7 +82,7 @@ def clean_locations_data(df, start, end):
     df = df.dropna() # remove Nans
     df = df[(df['vehicle_status'] == "available") & (df['provider'] != "JUMP")] # select providers that aren't jump and are available
     df = df.drop(['provider', 'vehicle_status', 'vehicle_status_reason', 'device_type', 'areas'], axis=1) # remove unneeded columns
-    df = df[((df['start_time'] >= start) & (df['start_time'] <= end)) &
+    df = df[((df['start_time'] >= start) & (df['start_time'] <= end)) |
             ((df['end_time'] >= start) & (df['end_time'] <= end))] # filter out times out of the inputted range
     df_subset = df.drop(['start_time', 'end_time'], axis=1) # drop start_time and end_time
     # duplicate the dataframe because we are separating the start and end times

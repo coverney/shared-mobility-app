@@ -6,12 +6,17 @@
 
 #submitButton {
   margin-top: 7%;
-  font-size: calc(3px + 1.5vmin);
+  font-size: calc(5px + 1.5vmin);
 }
 
 #fileInput {
   padding-top: 3%;
   /* padding-left: 25%; */
+  font-size: calc(3px + 1.5vmin);
+}
+
+#inputTitle {
+  font-size: calc(3px + 1.5vmin);
 }
 
 #userInput2 {
@@ -25,7 +30,9 @@
 .formText {
   text-align: center;
   padding: 3%;
-  font-size: calc(3px + 1.5vmin);
+  font-size: calc(5px + 1.5vmin);
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .modal-header .close {

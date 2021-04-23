@@ -115,7 +115,7 @@ class Upload extends Component {
                   <Form.Group>
                     <p className="formText">Input Remix events and locations data</p>
                     <Form.Row>
-                      <Form.Label column>Events Data</Form.Label>
+                      <Form.Label id="inputTitle" column>Events Data</Form.Label>
                       <Col>
                         <Form.File id="fileInput" onChange={this.checkFiles}
                           ref={(ref) => { this.uploadEvents = ref; }}
@@ -125,7 +125,7 @@ class Upload extends Component {
                     </Form.Row>
                     <br />
                     <Form.Row id="userInput2">
-                      <Form.Label column>Locations Data</Form.Label>
+                      <Form.Label id="inputTitle" column>Locations Data</Form.Label>
                       <Col>
                         <Form.File id="fileInput" onChange={this.checkFiles}
                           ref={(ref) => { this.uploadLocations = ref; }}
@@ -136,7 +136,7 @@ class Upload extends Component {
                     <br />
                     <p className="formText">Or input estimated demand data from last time</p>
                     <Form.Row id="userInput3">
-                      <Form.Label column>Demand Data</Form.Label>
+                      <Form.Label id="inputTitle" column>Demand Data</Form.Label>
                       <Col>
                         <Form.File id="fileInput" onChange={this.checkFiles}
                           ref={(ref) => { this.uploadDemand = ref; }}

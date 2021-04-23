@@ -269,12 +269,12 @@ class DataProcessor:
         # clean and combine events and locations data
         df_data = self.combine_events_and_locations(grid)
         print(df_data.shape)
-        # df_data.to_csv('../../../data_files/20210421_cleanedInputDataCumSum.csv', index=False)
+        # df_data.to_csv('../../../data_files/20210423_cleanedInputDataCumSum.csv', index=False)
         # df_data = pd.read_csv('../../../data_files/20210415_cleanedInputDataAprilCumSum.csv')
         # process data within grid class
         df_processed = grid.process_data(df_data, 'weekly')
         # df_processed = self.calculate_demand(df_processed)
-        # df_processed.to_csv('../../../data_files/20210421_demandLatLng.csv')
+        # df_processed.to_csv('../../../data_files/20210422_demandLatLng.csv')
         # set df_demand to be df_processed
         df_processed.reset_index(inplace=True)
         df_processed = df_processed.astype({'date': 'str', 'avail_count': 'float', 'avail_mins': 'float', 'prob_scooter_avail': 'float', 'trips': 'float', 'adj_trips': 'float'})
