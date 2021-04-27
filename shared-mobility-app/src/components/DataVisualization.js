@@ -4,7 +4,10 @@ import Container from 'react-bootstrap/Container';
 import Form from 'react-bootstrap/Form';
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
+import OverlayTrigger from 'react-bootstrap/OverlayTrigger';
+import Popover from 'react-bootstrap/Popover';
 import DateRangePicker from 'react-bootstrap-daterangepicker';
+import { AiOutlineInfoCircle } from 'react-icons/ai';
 import './DataVisualization.css';
 import { MapContainer, TileLayer, Rectangle, Tooltip, LayersControl, LayerGroup } from 'react-leaflet'
 
@@ -14,15 +17,23 @@ class DataVisualization extends Component {
     super(props);
     this.state = {
         center: [41.82972307181493, -71.41681396120897],
-        demandFilename: "estimated_demand.csv",
+        demandFilename: "processedGridCellData.csv",
         rectangles: [],
         start: null,
         end: null,
         mapsToDisplay: [],
         mapTitles: {"avail_count":"Average number of scooters", "avail_mins":"Minutes at least one scooter available",
-          "prob_scooter_avail":"Probability scooter available", "trips":"Number of trips", "adj_trips":"Adjusted number of trips"},
+          "prob_scooter_avail":"Probability scooter available", "trips":"Number of trips", "adj_trips":"Adjusted number of trips",
+          "unmet_demand":"Unmet demand"},
         mapTooltipTitles: {"avail_count":"# Scooters", "avail_mins":"Minutes Available",
-          "prob_scooter_avail":"Prob Available", "trips":"# Trips", "adj_trips":"Adjusted # Trips"},
+          "prob_scooter_avail":"Prob Available", "trips":"# Trips", "adj_trips":"Adjusted # Trips",
+          "unmet_demand":"Unmet Demand", "estimated_demand":"Estimated Demand"},
+        mapInfoText: {"avail_count":"Average number of scooters in a day",
+          "avail_mins":"Average minutes at least one scooter available in a day",
+          "prob_scooter_avail":"Average probability a random user finds a scooter available that they are willing to travel to",
+          "trips":"Average number of trips in a day (obtained from events data)",
+          "adj_trips":"Average estimated number of trips originating from a grid cell within a day",
+          "unmet_demand":"Estimated unmet demand within a day for grid cells with probabilities that significantly differ from 0. Value obtained by first calculating estimated demand (adjusted trips divided by probability scooter available) and then subtracting adjusted trips from it"},
     };
   }
 
@@ -54,10 +65,16 @@ downloadData() {
     .then(url => {
       // console.log(url);
       // console.log(this.state.demandFilename);
+      // get the timestamp to add to the filename
+      var now = new Date();
+      var year = now.getFullYear() * 10000;
+      var month = (now.getMonth() + 1) * 100;
+      var date = now.getDate();
+      var fullDate = (year + month + date).toString();
       var link = document.createElement("a");
       link.href = url;
       link.style = "visibility:hidden";
-      link.download = this.state.demandFilename;
+      link.download = fullDate + "_" + this.state.demandFilename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -174,18 +191,54 @@ downloadData() {
                 {log
                   ? <div>
                       <Rectangle key={i} bounds={item.bounds} color={item["log_"+varName+"_color"]}>
-                        <Tooltip sticky>
-                          Lat: {item.lat}, Long: {item.lng} <br />
-                          {this.state.mapTooltipTitles[varName]}: {item["log_"+varName]}
-                        </Tooltip>
+                        {(varName==="unmet_demand")
+                          ? <>
+                              <Tooltip sticky>
+                                Lat: {item.lat}, Long: {item.lng} <br />
+                                {(item["estimated_demand"]==null)
+                                  ? <>
+                                      Prob scooter available not <br /> significantly different than zero
+                                    </>
+                                  : <>
+                                      {this.state.mapTooltipTitles["estimated_demand"]}: {item["estimated_demand"]} <br />
+                                      {this.state.mapTooltipTitles[varName]}: {item[varName]}
+                                    </>
+                                }
+                              </Tooltip>
+                            </>
+                          : <>
+                              <Tooltip sticky>
+                                Lat: {item.lat}, Long: {item.lng} <br />
+                                {this.state.mapTooltipTitles[varName]}: {item[varName]}
+                              </Tooltip>
+                            </>
+                        }
                       </Rectangle>
                     </div>
                   : <div>
                       <Rectangle key={i} bounds={item.bounds} color={item[varName+"_color"]}>
-                        <Tooltip sticky>
-                          Lat: {item.lat}, Long: {item.lng} <br />
-                          {this.state.mapTooltipTitles[varName]}: {item[varName]}
-                        </Tooltip>
+                        {(varName==="unmet_demand")
+                          ? <>
+                              <Tooltip sticky>
+                                Lat: {item.lat}, Long: {item.lng} <br />
+                                {(item["estimated_demand"]==null)
+                                  ? <>
+                                      Prob scooter available not <br /> significantly different than zero
+                                    </>
+                                  : <>
+                                      {this.state.mapTooltipTitles["estimated_demand"]}: {item["estimated_demand"]} <br />
+                                      {this.state.mapTooltipTitles[varName]}: {item[varName]}
+                                    </>
+                                }
+                              </Tooltip>
+                            </>
+                          : <>
+                              <Tooltip sticky>
+                                Lat: {item.lat}, Long: {item.lng} <br />
+                                {this.state.mapTooltipTitles[varName]}: {item[varName]}
+                              </Tooltip>
+                            </>
+                        }
                       </Rectangle>
                     </div>
                 }
@@ -204,6 +257,15 @@ downloadData() {
               <>
                 <p className="DataVisualization-text">
                   {this.state.mapTitles[item]}
+                  <OverlayTrigger trigger={['hover', 'focus']} placement="bottom"
+                    overlay={<Popover>
+                                <Popover.Title as="h1">Variable Info</Popover.Title>
+                                <Popover.Content>
+                                  {this.state.mapInfoText[item]}
+                                </Popover.Content>
+                              </Popover>}>
+                    <Button variant="link"><AiOutlineInfoCircle className="react-icons" size="1em" color="#5bc0de"/></Button>
+                  </OverlayTrigger>
                 </p>
                 <MapContainer
                   center={this.state.center}
@@ -242,11 +304,23 @@ downloadData() {
       );
     }
 
+    const checkBoxPopover = (
+      <Popover>
+        <Popover.Title as="h1">Select variables</Popover.Title>
+        <Popover.Content>
+          Maps will be generated for the variables you selected. The values
+          can be obtained by hovering over the grid cells on the map. All
+          variables except for probability scooter available has two layers:
+          one colored by log values and one colored by the original values
+        </Popover.Content>
+      </Popover>
+    );
+
     return (
       <>
         <Container fluid>
           <Row>
-            <Col xs={2} className="UserDashboard">
+            <Col xs={3} className="UserDashboard">
                 {(this.state.end != null) && (this.state.start != null) &&
                   <div>
                     <p>
@@ -263,8 +337,12 @@ downloadData() {
               <br />
               <Form>
                 <Form.Group>
-                    <p>
+                    <p id="mapCheckboxText">
                       Scooter Variable Maps to Display
+                      <OverlayTrigger trigger={['hover', 'focus']} placement="right"
+                        overlay={checkBoxPopover}>
+                        <Button variant="link"><AiOutlineInfoCircle className="react-icons" size="1em" color="#5bc0de"/></Button>
+                      </OverlayTrigger>
                     </p>
                     <Form.Check
                       type="checkbox"
@@ -282,13 +360,6 @@ downloadData() {
                     />
                     <Form.Check
                       type="checkbox"
-                      label="Probability scooter available"
-                      className="mapCheckbox"
-                      name="prob_scooter_avail"
-                      onChange={this.handleMapCheckbox.bind(this)}
-                    />
-                    <Form.Check
-                      type="checkbox"
                       label="Number of trips"
                       className="mapCheckbox"
                       name="trips"
@@ -296,9 +367,23 @@ downloadData() {
                     />
                     <Form.Check
                       type="checkbox"
+                      label="Probability scooter available"
+                      className="mapCheckbox"
+                      name="prob_scooter_avail"
+                      onChange={this.handleMapCheckbox.bind(this)}
+                    />
+                    <Form.Check
+                      type="checkbox"
                       label="Adjusted number of trips"
                       className="mapCheckbox"
                       name="adj_trips"
+                      onChange={this.handleMapCheckbox.bind(this)}
+                    />
+                    <Form.Check
+                      type="checkbox"
+                      label="Unmet demand"
+                      className="mapCheckbox"
+                      name="unmet_demand"
                       onChange={this.handleMapCheckbox.bind(this)}
                     />
                 </Form.Group>

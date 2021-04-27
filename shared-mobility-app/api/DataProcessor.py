@@ -51,7 +51,7 @@ class DataProcessor:
         """ Check to make sure df_demand is valid in terms of its columns
         """
         cols = ["date", "left_lng", "right_lng", "lower_lat", "upper_lat",
-                "avail_count", "avail_mins", "prob_scooter_avail", "trips", "adj_trips"]
+                "avail_count", "avail_mins", "trips", "prob_scooter_avail", "adj_trips"]
         for col in cols:
             if col not in df_demand.columns:
                 return False
@@ -64,7 +64,7 @@ class DataProcessor:
         # select for cols we want
         df = self.df_demand[["date", "left_lng", "right_lng", "lower_lat",
                                 "upper_lat", "avail_count", "avail_mins",
-                                "prob_scooter_avail", "trips", "adj_trips"]]
+                                "trips", "prob_scooter_avail", "adj_trips"]]
         return df
 
     def map_values_to_color(self, df, col_name):
@@ -121,14 +121,19 @@ class DataProcessor:
             # also writing percents with proper formatting
             for factor in factors:
                 name, type = factor
-                if type == 'itself':
-                    rect_dict[name] = row[name]
-                elif type == 'decimal':
-                    rect_dict[name] = round(row[name], 2)
-                else: # type == 'percent'
-                    rect_dict[name] = str(int(row[name]*100))+"%"
-                # add in the color info
-                rect_dict[name+'_color'] = row[name+'_color']
+                if pd.isna(row[name]):
+                    # set color to gray and value to Nan
+                    rect_dict[name+'_color'] = "#808080"
+                    rect_dict[name] = None
+                else:
+                    if type == 'itself':
+                        rect_dict[name] = row[name]
+                    elif type == 'decimal':
+                        rect_dict[name] = round(row[name], 2)
+                    else: # type == 'percent'
+                        rect_dict[name] = str(int(row[name]*100))+"%"
+                    # add in the color info
+                    rect_dict[name+'_color'] = row[name+'_color']
             rects.append(rect_dict)
         return rects
 
@@ -148,12 +153,16 @@ class DataProcessor:
         assert df_sub['date'].min() >= start
         assert df_sub['date'].max() <= end
         # Group demand data by lat/lng region and average across other cols
-        df = df_sub.groupby(['left_lng', 'right_lng', 'lower_lat', 'upper_lat'])[['avail_count', 'avail_mins', 'prob_scooter_avail', 'trips', 'adj_trips']].mean().reset_index()
+        probVariance = df_sub.groupby(['left_lng', 'right_lng', 'lower_lat', 'upper_lat'])[['prob_scooter_avail']].var().reset_index()[['prob_scooter_avail']]
+        # print(probVariance.head())
+        df = df_sub.groupby(['left_lng', 'right_lng', 'lower_lat', 'upper_lat'])[['avail_count', 'avail_mins', 'trips', 'prob_scooter_avail', 'adj_trips']].mean().reset_index()
+        df['prob_scooter_avail_var'] = probVariance['prob_scooter_avail']
+        df = df.fillna(0)
         # print(df.head())
         # For each var col, create corresponding color columns (log and unlog)
         # Also create the factors list that get passed into self.create_rectangle_lst
         factors = [('avail_count', 'decimal'), ('avail_mins', 'decimal'),
-                        ('prob_scooter_avail', 'percent'), ('trips', 'itself'), ('adj_trips', 'decimal')]
+                        ('trips', 'itself'), ('prob_scooter_avail', 'percent'), ('adj_trips', 'decimal')]
         i = 0
         original_len = len(factors)
         while i < original_len:
@@ -166,6 +175,24 @@ class DataProcessor:
                 df = self.create_log_column(df, name)
                 factors.append(('log_'+name, type))
             i += 1
+        # Deal with estimated demand and unmet demand
+        # Filter out rows where prob_scooter_avail sig diff from 0
+        sigDiffIdx = df.apply(lambda x: utils.sig_diff_from_zero(x['prob_scooter_avail'], x['prob_scooter_avail_var']), axis=1)
+        # print(sigDiffIdx.head())
+        df_sig_diff = df[sigDiffIdx]
+        # Calculate estimated demand and unmet demand
+        df_sig_diff = self.calculate_demand(df_sig_diff)
+        # print(df_sig_diff.head())
+        # Create color column and log column for unmet demand
+        df_sig_diff = self.map_values_to_color(df_sig_diff, 'unmet_demand')
+        df_sig_diff = self.map_values_to_color(df_sig_diff, 'estimated_demand')
+        df_sig_diff = self.create_log_column(df_sig_diff, 'unmet_demand')
+        factors.extend([('estimated_demand', 'decimal'), ('unmet_demand', 'decimal'), ('log_unmet_demand', 'decimal')])
+        # Fill in the colors for the grid cells that aren't significantly different
+        df_not_sig_diff = df[~sigDiffIdx]
+        # print(df_not_sig_diff.head())
+        df = pd.concat([df_sig_diff, df_not_sig_diff])
+        # df.to_csv('../../../data_files/20210427_estimatedDemand.csv', index=False)
         # Create Rectangle information
         rectangles = self.create_rectangle_lst(df, factors)
         return rectangles, start, end
@@ -247,9 +274,11 @@ class DataProcessor:
         df['cum_value'] = df.groupby('grid_coord')['value'].cumsum()
         return df
 
-    # def calculate_demand(self, df):
-    #     df['estimated_demand'] = df['adj_trips'].divide(df['prob_scooter_avail'].where(df['prob_scooter_avail'] != 0, np.nan))
-    #     return df
+    def calculate_demand(self, df):
+        df = df.copy()
+        df['estimated_demand'] = df['adj_trips'].divide(df['prob_scooter_avail'].where(df['prob_scooter_avail'] != 0, np.nan))
+        df['unmet_demand'] = df['estimated_demand'] - df['adj_trips']
+        return df
 
     def process_data(self):
         """ Computes availability and pickup info and estimates demand.
@@ -274,7 +303,7 @@ class DataProcessor:
         # process data within grid class
         df_processed = grid.process_data(df_data, 'weekly')
         # df_processed = self.calculate_demand(df_processed)
-        # df_processed.to_csv('../../../data_files/20210422_demandLatLng.csv')
+        # df_processed.to_csv('../../../data_files/20210427_processedGridCellData.csv')
         # set df_demand to be df_processed
         df_processed.reset_index(inplace=True)
         df_processed = df_processed.astype({'date': 'str', 'avail_count': 'float', 'avail_mins': 'float', 'prob_scooter_avail': 'float', 'trips': 'float', 'adj_trips': 'float'})
@@ -283,9 +312,15 @@ class DataProcessor:
         print('Elapsed time to process data:', (timer_end - timer_start)/60.0, 'minutes')
 
 if __name__ == '__main__':
-    eventsFile = '../../../data_files/events.csv'
-    locationsFile = '../../../data_files/locations_for_multiple_providers_from_18-11-01_to_19-11-01.csv'
-    df_events = pd.read_csv(eventsFile)
-    df_locations = pd.read_csv(locationsFile)
-    processor = DataProcessor(df_events, df_locations, 500, 0.7)
-    processor.process_data()
+    # eventsFile = '../../../data_files/events.csv'
+    # locationsFile = '../../../data_files/locations_for_multiple_providers_from_18-11-01_to_19-11-01.csv'
+    # df_events = pd.read_csv(eventsFile)
+    # df_locations = pd.read_csv(locationsFile)
+    # processor = DataProcessor(df_events, df_locations, 500, 0.7)
+    # processor.process_data()
+
+    demandFile = '../../../data_files/20210427_processedGridCellData.csv'
+    df_demand = pd.read_csv(demandFile)
+    processor = DataProcessor()
+    processor.set_demand(df_demand)
+    rectangles, start, end = processor.build_shape_data()

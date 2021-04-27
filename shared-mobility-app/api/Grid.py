@@ -108,7 +108,7 @@ class Grid:
 
     def create_empty_df_result(self, start, end):
         cols = ['left_lng', 'right_lng', 'lower_lat', 'upper_lat',
-                    'avail_count', 'avail_mins', 'prob_scooter_avail', 'trips', 'adj_trips']
+                    'avail_count', 'avail_mins', 'trips', 'prob_scooter_avail', 'adj_trips']
         start_date = iso8601.parse_date(start).date()
         end_date = iso8601.parse_date(end).date()
         dates = pd.date_range(start_date, end_date, freq='d', closed='left')
@@ -224,7 +224,7 @@ class Grid:
                 for dist in neighbors:
                     for coord in neighbors[dist]:
                         self.cells[coord].process_interval(time_type, time, dist)
-        
+
         # write in leftover data
         updated_grid_coords = set()
         final_time = (iso8601.parse_date(max(df_data_sub['time'])) + timedelta(days=1)).replace(hour=23, minute=59, second=59)

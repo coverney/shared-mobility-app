@@ -2,22 +2,23 @@ import pandas as pd
 import numpy as np
 import datetime
 from math import radians, cos, sin, asin, degrees, sqrt
+from scipy.stats import norm
 import iso8601
 
 _AVG_EARTH_RADIUS_KM = 6371.0088
 DIRECTIONS = ['up', 'down', 'left', 'right', 'left-down', 'left-up', 'right-down', 'right-up']
 
-def get_grid_cell_info(coord, grid):
-    """ Take in a lat/lng coordinate and does the following
-        - Find which GridCell the coord belongs in
-        - Retrieve the bounding lat/lngs and id from the GridCell
-        - Return those values
+def sig_diff_from_zero(mean, var, alpha=0.1):
+    """ Determine if a value (probability scooter is available) is significantly
+        different from 0 based on it mean and variance. Returns true if it is
+        and false if it's not
     """
-    grid_coord = grid.locate_point(coord)
-    grid_cell = grid.get_cells()[grid_coord]
-    upper_lat, left_lng = grid_cell.get_upper_left()
-    lower_lat, right_lng = grid_cell.get_lower_right()
-    return grid_cell.get_id(), round(left_lng, 5), round(right_lng, 5), round(lower_lat, 5), round(upper_lat, 5)
+    # Get t-statistic
+    alpha = 0.1
+    t_q = norm.ppf(1-alpha/2)
+    if mean==0 or var==0 or mean**2/var <= t_q**2:
+        return False
+    return True
 
 def haversine(p1, p2):
     """ Find distance in km between two lat/lng coordinates

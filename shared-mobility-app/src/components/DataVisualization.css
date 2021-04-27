@@ -30,13 +30,22 @@
 
 .leaflet-container {
   width: 75%;
-  height: 50vh;
+  height: 70vh;
   margin-bottom: 2%;
 }
 
 .mapCheckbox {
   text-align: left;
   margin-left: 10%;
+}
+
+.react-icons {
+  vertical-align: top;
+  margin-left: -100%;
+}
+
+#mapCheckboxText {
+  margin-bottom: 0%;
 }
 
 #downloadButton {
