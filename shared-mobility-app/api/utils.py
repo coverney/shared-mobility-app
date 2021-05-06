@@ -1,20 +1,27 @@
 import pandas as pd
+import numpy as np
+import datetime
 from math import radians, cos, sin, asin, degrees, sqrt
+from scipy.stats import norm
+import iso8601
 
 _AVG_EARTH_RADIUS_KM = 6371.0088
 DIRECTIONS = ['up', 'down', 'left', 'right', 'left-down', 'left-up', 'right-down', 'right-up']
 
-def get_grid_cell_info(coord, grid):
-    """ Take in a lat/lng coordinate and does the following
-        - Find which GridCell the coord belongs in
-        - Retrieve the bounding lat/lngs and id from the GridCell
-        - Return those values
+def sig_diff_from_zero(mean, var, alpha=0.1):
+    """ Determine if a value (probability scooter is available) is significantly
+        different from 0 based on it mean and variance. Returns true if it is
+        and false if it's not
     """
-    grid_coord = grid.locate_point(coord)
-    grid_cell = grid.get_cells()[grid_coord]
-    upper_lat, left_lng = grid_cell.get_upper_left()
-    lower_lat, right_lng = grid_cell.get_lower_right()
-    return grid_cell.get_id(), round(left_lng, 5), round(right_lng, 5), round(lower_lat, 5), round(upper_lat, 5)
+    # Get t-statistic
+    alpha = 0.1
+    t_q = norm.ppf(1-alpha/2)
+    # check to see whether variance==0
+    # if var == 0:
+    #     print(f"variance is 0 and mean is {mean}")
+    if mean==0 or mean**2/var <= t_q**2:
+        return False
+    return True
 
 def haversine(p1, p2):
     """ Find distance in km between two lat/lng coordinates
@@ -66,3 +73,38 @@ def add_distance(distance, coord, direction):
         denominator = cos(radians(lat2))
         delta_lng = degrees(2 * asin(numerator/denominator))
         return (lat2, lng-delta_lng) if "left" in direction else (lat2, lng+delta_lng)
+
+def remove_time_zone(time_stamp):
+    """ Remove utc offset from time zone within time_stamp
+    """
+    return str(iso8601.parse_date(time_stamp).replace(tzinfo=datetime.timezone.utc))
+
+def clean_locations_data(df, start, end):
+    """ Prepare locations data to process
+    """
+    df = df.copy()
+    df = df.dropna() # remove Nans
+    df = df[(df['vehicle_status'] == "available") & (df['provider'] != "JUMP")] # select providers that aren't jump and are available
+    df = df.drop(['provider', 'vehicle_status', 'vehicle_status_reason', 'device_type', 'areas'], axis=1) # remove unneeded columns
+    df = df[((df['start_time'] >= start) & (df['start_time'] <= end)) |
+            ((df['end_time'] >= start) & (df['end_time'] <= end))] # filter out times out of the inputted range
+    df_subset = df.drop(['start_time', 'end_time'], axis=1) # drop start_time and end_time
+    # duplicate the dataframe because we are separating the start and end times
+    df_repeated_subset = pd.DataFrame(np.repeat(df_subset.values, 2, axis=0))
+    df_repeated_subset.columns = df_subset.columns
+    df_repeated_subset['time'] = df[['start_time', 'end_time']].stack().reset_index(level=[0,1], drop=True) # stack the start and end time into one column
+    # df_repeated_subset['time'] = df_repeated_subset['time'].apply(remove_time_zone)
+    df_repeated_subset['time_type'] = pd.Series(['start_time', 'end_time']*int(df_repeated_subset.shape[0]/2)) # create time_type column
+    return df_repeated_subset
+
+def clean_events_data(df, start, end):
+    """ Clean events data to just obtain relevant info
+    """
+    df = df.copy()
+    df['time'] = df['event_time']
+    # df['time'] = df['event_time'].apply(remove_time_zone)
+    df['time_type'] = 'trip'
+    # only get the rows with event_type_reason == "user_pick_up" and event_time between 6 am and 10 pm
+    # also make sure dates are between the start and end period
+    df = df[(df['event_type_reason'] == "user_pick_up") & (df['time'] >= start) & (df['time'] <= end)]
+    return df[['lat', 'lng', 'time', 'time_type']].reset_index(drop=True)
