@@ -16,7 +16,10 @@ def sig_diff_from_zero(mean, var, alpha=0.1):
     # Get t-statistic
     alpha = 0.1
     t_q = norm.ppf(1-alpha/2)
-    if mean==0 or var==0 or mean**2/var <= t_q**2:
+    # check to see whether variance==0
+    # if var == 0:
+    #     print(f"variance is 0 and mean is {mean}")
+    if mean==0 or mean**2/var <= t_q**2:
         return False
     return True
 

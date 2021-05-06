@@ -47,6 +47,12 @@ class DataProcessor:
     def set_demand(self, df_demand):
         self.df_demand = df_demand
 
+    def set_start(self, start):
+        self.start = start
+
+    def set_end(self, end):
+        self.end = end
+
     def is_valid_df_demand(self, df_demand):
         """ Check to make sure df_demand is valid in terms of its columns
         """
@@ -152,17 +158,31 @@ class DataProcessor:
         df_sub = self.df_demand[(self.df_demand['date'] >= start) & (self.df_demand['date'] <= end)]
         assert df_sub['date'].min() >= start
         assert df_sub['date'].max() <= end
+        num_days = len(pd.date_range(iso8601.parse_date(start), iso8601.parse_date(end), freq='d'))
+        print(f"number of days is {num_days}")
+        # When finding variance and mean, add in missing days as 0s
+        # Obtain the counts for each lat/lng region
+        counts = df_sub.groupby(['left_lng', 'right_lng', 'lower_lat', 'upper_lat']).size().reset_index(name='counts')
         # Group demand data by lat/lng region and average across other cols
-        probVariance = df_sub.groupby(['left_lng', 'right_lng', 'lower_lat', 'upper_lat'])[['prob_scooter_avail']].var().reset_index()[['prob_scooter_avail']]
-        # print(probVariance.head())
         df = df_sub.groupby(['left_lng', 'right_lng', 'lower_lat', 'upper_lat'])[['avail_count', 'avail_mins', 'trips', 'prob_scooter_avail', 'adj_trips']].mean().reset_index()
+        df = df.merge(counts, on=['left_lng', 'right_lng', 'lower_lat', 'upper_lat'])
+        # print(df.head())
+        # Modify averages by multiplying each by count and divide by num_days
+        vars = ['avail_count', 'avail_mins', 'trips', 'prob_scooter_avail', 'adj_trips']
+        for var in vars:
+            df[var] = df[var]*df['counts']/num_days
+        # print(df.head())
+        # Calculate the variance for prob_scooter_avail
+        probVariance = df_sub.groupby(['left_lng', 'right_lng', 'lower_lat', 'upper_lat']).apply(lambda x: ((x['prob_scooter_avail'] - (x['prob_scooter_avail'].sum()/num_days))**2).sum()/(num_days-1)).reset_index(name='prob_scooter_avail')
+        # print(probVariance.head())
         df['prob_scooter_avail_var'] = probVariance['prob_scooter_avail']
-        df = df.fillna(0)
+        # Check to see if there are any Nan values
+        print(f"Nan values in df? {df.isnull().values.any()}")
         # print(df.head())
         # For each var col, create corresponding color columns (log and unlog)
         # Also create the factors list that get passed into self.create_rectangle_lst
         factors = [('avail_count', 'decimal'), ('avail_mins', 'decimal'),
-                        ('trips', 'itself'), ('prob_scooter_avail', 'percent'), ('adj_trips', 'decimal')]
+                        ('trips', 'decimal'), ('prob_scooter_avail', 'percent'), ('adj_trips', 'decimal')]
         i = 0
         original_len = len(factors)
         while i < original_len:
@@ -289,21 +309,23 @@ class DataProcessor:
         if self.df_events is None or self.df_locations is None:
             print("Missing data: either df_events or df_locations is None")
             return
-        # set start and end based on self.df_events
-        self.start = self.df_events['event_time'].min()
-        self.end = self.df_events['event_time'].max()
+        # set start and end based on self.df_events if not already set
+        if not self.start:
+            self.start = self.df_events['event_time'].min()
+        if not self.end:
+            self.end = self.df_events['event_time'].max()
         print(f"date range for events data is from {self.start} to {self.end}")
         # create Grid object before processing any data
         grid = self.compute_grid_cells(self.df_locations)
         # clean and combine events and locations data
         df_data = self.combine_events_and_locations(grid)
         print(df_data.shape)
-        # df_data.to_csv('../../../data_files/20210423_cleanedInputDataCumSum.csv', index=False)
+        # df_data.to_csv('../../../data_files/20210506_cleanedInputDataCumSum.csv', index=False)
         # df_data = pd.read_csv('../../../data_files/20210415_cleanedInputDataAprilCumSum.csv')
         # process data within grid class
         df_processed = grid.process_data(df_data, 'weekly')
         # df_processed = self.calculate_demand(df_processed)
-        # df_processed.to_csv('../../../data_files/20210427_processedGridCellData.csv')
+        # df_processed.to_csv('../../../data_files/20210506_processedGridCellData.csv')
         # set df_demand to be df_processed
         df_processed.reset_index(inplace=True)
         df_processed = df_processed.astype({'date': 'str', 'avail_count': 'float', 'avail_mins': 'float', 'prob_scooter_avail': 'float', 'trips': 'float', 'adj_trips': 'float'})

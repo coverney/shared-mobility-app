@@ -7,6 +7,7 @@ import flask_excel as excel
 from collections import OrderedDict
 import time # to add time delay for testing
 from datetime import datetime
+import pytz
 
 ALLOWED_EXTENSIONS = set(['.csv'])
 
@@ -48,7 +49,9 @@ def file_upload():
         locationsFilename = locationsFile.filename
         prob = float(request.form.get('probValue'))/100.0
         distance = int(request.form.get('distanceValue'))
-        print(f"prob {prob} and distance {distance}")
+        startTime = request.form.get('startTime')
+        endTime = request.form.get('endTime')
+        print(f"prob {prob}, distance {distance}, startTime {startTime}, and endTime {endTime}")
         print(f"received events file, {eventsFilename}, and locations file, {locationsFilename}, from client")
         # check file extension
         if any(ext in eventsFilename for ext in ALLOWED_EXTENSIONS) and any(ext in locationsFilename for ext in ALLOWED_EXTENSIONS):
@@ -61,6 +64,16 @@ def file_upload():
             processor.set_locations(df_locations)
             processor.set_p0(prob)
             processor.set_distance(distance)
+            # TODO: when we get more data from other locations, we would need to change the timezone
+            eastern = pytz.timezone('US/Eastern')
+            if startTime:
+                startTime = datetime.strptime(startTime, "%m/%d/%Y").replace(hour=0, minute=0, second=0)
+                startTime = eastern.localize(startTime).isoformat()
+                processor.set_start(startTime)
+            if endTime:
+                endTime = datetime.strptime(endTime, "%m/%d/%Y").replace(hour=0, minute=0, second=0)
+                endTime = eastern.localize(endTime).isoformat()
+                processor.set_end(endTime)
             processor.process_data()
             # print("Shape of demand file", processor.get_demand().shape)
             # time.sleep(3) # sleep for 3 seconds for testing
