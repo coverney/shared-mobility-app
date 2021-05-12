@@ -1,0 +1,19 @@
+runtime: python
+env: flex
+entrypoint: gunicorn -b :$PORT main:app
+
+runtime_config:
+ python_version: 3.7
+
+handlers:
+# frontend
+- url: /static
+  static_dir: build/static
+
+- url: /(.*\.(json|ico|js|html))$
+  static_files: build/\1
+  upload: build/.*\.(json|ico|js|html)$
+
+# backend
+- url: /.*
+  script: auto

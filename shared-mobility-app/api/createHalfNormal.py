@@ -38,9 +38,9 @@ def generate_cdfs(sigma, distance, max_distance, checkNorm=True, returnTriangles
     cdfs = {}
     prob_sum = 0
     for left, right in zip(distances, distances[1:]):
-        prob_sum = rv.cdf(right)-rv.cdf(0) 
+        prob_sum = rv.cdf(right)-rv.cdf(0)
         cdfs[left] = prob_sum
-    
+
     # normalize cdfs
     norm_cdfs = {k: v / prob_sum for k, v in cdfs.items()}
 
@@ -98,4 +98,12 @@ def create_distribution(p0, distance, max_distance):
     """
     # find sigma from p0 value
     sigma = search_sigma(p0, distance, max_distance)
-    return generate_cdfs(sigma, distance, max_distance, returnTriangles=True)
+    # don't include distances greater than the distance with a probability of 1
+    dists, triangles = get_distances(distance, max_distance)
+    cdf_dict = generate_cdfs(sigma, distance, max_distance, returnTriangles=True)
+    filtered_cdf_dict = {}
+    for dist in dists:
+        filtered_cdf_dict[dist] = cdf_dict[dist]
+        if cdf_dict[dist][0] > 0.999:
+            break
+    return filtered_cdf_dict

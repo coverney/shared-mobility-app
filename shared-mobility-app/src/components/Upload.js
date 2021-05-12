@@ -194,6 +194,7 @@ class Upload extends Component {
           aria-labelledby="contained-modal-title-vcenter"
           centered
           enforceFocus={false}
+          scrollable={true}
         >
           <Modal.Header closeButton>
             <Modal.Title id="contained-modal-title-vcenter">
@@ -201,45 +202,6 @@ class Upload extends Component {
             </Modal.Title>
           </Modal.Header>
           <Modal.Body>
-            <Form>
-              <Form.Label>Dimensions for one grid (in meters)</Form.Label>
-              <Form.Group as={Row}>
-                <Col xs="9">
-                  <RangeSlider
-                    value={this.state.distanceValue}
-                    onChange={e => this.setState({distanceValue: e.target.value, probValue: 100})}
-                    min={100}
-                    max={1000}
-                  />
-                </Col>
-                <Col xs="3">
-                  <Form.Control
-                    value={this.state.distanceValue}
-                    onChange={e => this.setState({distanceValue: e.target.value, probValue: 100})}
-                  />
-                </Col>
-              </Form.Group>
-            </Form>
-            <Form>
-              <Form.Label>Probability (%) a user wouldn't consider a scooter that is at least one grid away </Form.Label>
-              <Form.Group as={Row}>
-                <Col xs="9">
-                  <RangeSlider
-                    value={this.state.probValue}
-                    onChange={e => this.setState({probValue: e.target.value})}
-                    min={Math.ceil((this.state.distanceValue/10)+5)}
-                    max={100}
-                    tooltipLabel={currentValue => `${currentValue}%`}
-                  />
-                </Col>
-                <Col xs="3">
-                  <Form.Control
-                    value={this.state.probValue}
-                    onChange={e => this.setState({probValue: e.target.value})}
-                  />
-                </Col>
-              </Form.Group>
-            </Form>
             <p>
               <b>Disclaimer</b>: unless specified, the first and last times in the events
               data are taken as the start and end times for data processing
@@ -294,6 +256,46 @@ class Upload extends Component {
                 </div>
               </Col>
             </Row>
+            <br />
+            <Form>
+              <Form.Label>Dimensions for one grid (in meters)</Form.Label>
+              <Form.Group as={Row}>
+                <Col xs="9">
+                  <RangeSlider
+                    value={this.state.distanceValue}
+                    onChange={e => this.setState({distanceValue: e.target.value, probValue: 100})}
+                    min={100}
+                    max={1000}
+                  />
+                </Col>
+                <Col xs="3">
+                  <Form.Control
+                    value={this.state.distanceValue}
+                    onChange={e => this.setState({distanceValue: e.target.value, probValue: 100})}
+                  />
+                </Col>
+              </Form.Group>
+            </Form>
+            <Form>
+              <Form.Label>Probability (%) a user wouldn't consider a scooter that is at least one grid away </Form.Label>
+              <Form.Group as={Row}>
+                <Col xs="9">
+                  <RangeSlider
+                    value={this.state.probValue}
+                    onChange={e => this.setState({probValue: e.target.value})}
+                    min={Math.ceil((this.state.distanceValue/10)+5)}
+                    max={100}
+                    tooltipLabel={currentValue => `${currentValue}%`}
+                  />
+                </Col>
+                <Col xs="3">
+                  <Form.Control
+                    value={this.state.probValue}
+                    onChange={e => this.setState({probValue: e.target.value})}
+                  />
+                </Col>
+              </Form.Group>
+            </Form>
           </Modal.Body>
           <Modal.Footer>
             <Button onClick={() => this.setState({askForInput:false})}>Submit</Button>

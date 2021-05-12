@@ -329,6 +329,10 @@ class DataProcessor:
         # set df_demand to be df_processed
         df_processed.reset_index(inplace=True)
         df_processed = df_processed.astype({'date': 'str', 'avail_count': 'float', 'avail_mins': 'float', 'prob_scooter_avail': 'float', 'trips': 'float', 'adj_trips': 'float'})
+        # make sure dates are within start and end dates
+        start_date = str(iso8601.parse_date(self.start).date())
+        end_date = str(iso8601.parse_date(self.end).date())
+        df_processed = df_processed[(df_processed['date'] >= start_date) & (df_processed['date'] <= end_date)]
         self.set_demand(df_processed)
         timer_end = time.time()
         print('Elapsed time to process data:', (timer_end - timer_start)/60.0, 'minutes')
