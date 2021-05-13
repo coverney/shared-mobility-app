@@ -1,9 +1,10 @@
 # Initiate via yarn start-api
 
-from flask import Flask, request, send_file
+from flask import Flask, request, send_file, Blueprint
 from DataProcessor import DataProcessor
 import pandas as pd
 import flask_excel as excel
+from flask_restplus import Api
 from collections import OrderedDict
 import time # to add time delay for testing
 from datetime import datetime
@@ -11,9 +12,18 @@ import pytz
 
 ALLOWED_EXTENSIONS = set(['.csv'])
 
-app = Flask(__name__)
+# app = Flask(__name__)
+# api = Api()
+# blueprint = Blueprint('api', __name__, url_prefix='/api')
+# api.init_app(blueprint)
+# app.register_blueprint(blueprint)
+app = Flask(__name__, static_folder="build", static_url_path="/")
 excel.init_excel(app)
 processor = DataProcessor()
+
+@app.route("/")
+def index():
+    return app.send_static_file("index.html")
 
 @app.route('/upload', methods=['POST'])
 def file_upload():
