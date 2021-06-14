@@ -1,10 +1,12 @@
 # Initiate via yarn start-api
 
-from flask import Flask, request, send_file, Blueprint
+import redis
+from os import environ
+from flask import Flask, request, send_file, session
+from flask_session import Session
 from DataProcessor import DataProcessor
 import pandas as pd
 import flask_excel as excel
-from flask_restplus import Api
 from collections import OrderedDict
 import time # to add time delay for testing
 from datetime import datetime
@@ -12,17 +14,22 @@ import pytz
 
 ALLOWED_EXTENSIONS = set(['.csv'])
 
-# app = Flask(__name__)
-# api = Api()
-# blueprint = Blueprint('api', __name__, url_prefix='/api')
-# api.init_app(blueprint)
-# app.register_blueprint(blueprint)
 app = Flask(__name__, static_folder="build", static_url_path="/")
+app.secret_key = environ.get('SECRET_KEY')
+# Configure Redis for storing the session data on the server-side
+app.config['SESSION_TYPE'] = 'redis'
+app.config['SESSION_PERMANENT'] = False
+app.config['SESSION_USE_SIGNER'] = True
+app.config['SESSION_REDIS'] = redis.from_url('redis://localhost:6379')
+
+# Create and initialize the Flask-Session object AFTER `app` has been configured
+server_session = Session(app)
 excel.init_excel(app)
-processor = DataProcessor()
 
 @app.route("/")
 def index():
+    if 'processor' not in session:
+        session['processor'] = DataProcessor()
     return app.send_static_file("index.html")
 
 @app.route('/upload', methods=['POST'])
@@ -32,6 +39,9 @@ def file_upload():
     send the data to the processing pipeline, and
     returns a response to the frontend
     """
+    # delete processor so we can make a new one
+    processor = session.pop('processor', None)
+    processor = DataProcessor()
     if 'demandFile' in request.files:
         # received demand file and can skip data processing step
         demandFile = request.files['demandFile']
@@ -45,6 +55,8 @@ def file_upload():
             df_demand = pd.read_csv(demandFile)
             if processor.is_valid_df_demand(df_demand):
                 processor.set_demand(df_demand)
+                print("set demand")
+                session['processor'] = processor
             else:
                 # return unsuccessful response
                 response = {'error': True, 'msg': "demand file missing required cols"}
@@ -85,6 +97,7 @@ def file_upload():
                 endTime = eastern.localize(endTime).isoformat()
                 processor.set_end(endTime)
             processor.process_data()
+            session['processor'] = processor
             # print("Shape of demand file", processor.get_demand().shape)
             # time.sleep(3) # sleep for 3 seconds for testing
         else:
@@ -94,8 +107,13 @@ def file_upload():
 
 @app.route('/return-demand-file', methods=['GET'])
 def return_demand_file():
-    demand_list = processor.get_relevant_demand_cols().to_dict('records', into=OrderedDict)
-    return excel.make_response_from_records(demand_list, file_type='csv')
+    processor = session.get('processor', None)
+    if processor is not None and processor.get_demand() is not None:
+        demand_list = processor.get_relevant_demand_cols().to_dict('records', into=OrderedDict)
+        return excel.make_response_from_records(demand_list, file_type='csv')
+    else:
+        print("demand df is none")
+        return {}
 
 @app.route('/return-rectangles', methods=['POST', 'GET'])
 def return_rectangles():
@@ -113,7 +131,8 @@ def return_rectangles():
     # ]
     # test_processor = DataProcessor()
     # rectangles = test_processor.build_shape_data()
-    if processor.get_demand() is not None:
+    processor = session.get('processor', None)
+    if processor is not None and processor.get_demand() is not None:
         if request.method == 'POST':
             start = str(request.form.get('start'))
             end = str(request.form.get('end'))

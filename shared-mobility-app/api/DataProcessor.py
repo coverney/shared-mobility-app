@@ -3,6 +3,7 @@ import time
 import numpy as np
 import iso8601
 import datetime
+import jsonpickle
 from statsmodels.distributions.empirical_distribution import ECDF
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
@@ -26,6 +27,12 @@ class DataProcessor:
         # set start and end in self.process_data()
         self.start = None
         self.end = None
+
+    def to_json(self) :
+        """
+        to_json transforms the Model instance into a JSON string
+        """
+        return jsonpickle.encode(self)
 
     def get_demand(self):
         """ Return the demand dataframe after it has been generated
