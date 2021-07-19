@@ -1,6 +1,7 @@
 # Initiate via yarn start-api
 
 import redis
+import pyarrow as pa
 from os import environ
 from flask import Flask, request, send_file, session
 from flask_session import Session
@@ -11,16 +12,17 @@ from collections import OrderedDict
 import time # to add time delay for testing
 from datetime import datetime
 import pytz
+import utils
 
 ALLOWED_EXTENSIONS = set(['.csv'])
 
 app = Flask(__name__, static_folder="build", static_url_path="/")
 app.secret_key = environ.get('SECRET_KEY')
 # Configure Redis for storing the session data on the server-side
-app.config['SESSION_TYPE'] = 'redis'
-app.config['SESSION_PERMANENT'] = False
-app.config['SESSION_USE_SIGNER'] = True
-app.config['SESSION_REDIS'] = redis.from_url('redis://localhost:6379')
+app.config['SESSION_TYPE'] = environ.get('SESSION_TYPE')
+app.config['SESSION_PERMANENT'] = environ.get('SESSION_PERMANENT')
+app.config['SESSION_USE_SIGNER'] = environ.get('SESSION_USE_SIGNER')
+app.config['SESSION_REDIS'] = redis.from_url(environ.get('SESSION_REDIS'))
 
 # Create and initialize the Flask-Session object AFTER `app` has been configured
 server_session = Session(app)
@@ -28,8 +30,14 @@ excel.init_excel(app)
 
 @app.route("/")
 def index():
-    if 'processor' not in session:
-        session['processor'] = DataProcessor()
+    # TODO: delete unneeded code
+    # if 'processorData' not in session:
+    #     # session['processor'] = DataProcessor()
+    #     session['processorData'] = None
+    #     session['processorDistance'] = None
+    # delete processorData and processorDistance so we can make a new one
+    processor_data = session.pop('processorData', None)
+    processor_distance = session.pop('processorDistance', None)
     return app.send_static_file("index.html")
 
 @app.route('/upload', methods=['POST'])
@@ -39,9 +47,9 @@ def file_upload():
     send the data to the processing pipeline, and
     returns a response to the frontend
     """
-    # delete processor so we can make a new one
-    processor = session.pop('processor', None)
-    processor = DataProcessor()
+    # delete processorData and processorDistance so we can make a new one
+    processor_data = session.pop('processorData', None)
+    processor_distance = session.pop('processorDistance', None)
     if 'demandFile' in request.files:
         # received demand file and can skip data processing step
         demandFile = request.files['demandFile']
@@ -53,10 +61,11 @@ def file_upload():
             response = {'error': False, 'msg': "successfully received uploaded file"}
             # set df_demand var in processor
             df_demand = pd.read_csv(demandFile)
-            if processor.is_valid_df_demand(df_demand):
-                processor.set_demand(df_demand)
-                print("set demand")
-                session['processor'] = processor
+            if utils.is_valid_df_demand(df_demand):
+                # serialize df_demand
+                df_demand_compressed = pa.serialize(df_demand).to_buffer().to_pybytes()
+                session['processorData'] = df_demand_compressed
+                # TODO: need to find processorDistance from df_demand!!
             else:
                 # return unsuccessful response
                 response = {'error': True, 'msg': "demand file missing required cols"}
@@ -82,6 +91,7 @@ def file_upload():
             # start processing data
             df_events = pd.read_csv(eventsFile)
             df_locations = pd.read_csv(locationsFile)
+            processor = DataProcessor()
             processor.set_events(df_events)
             processor.set_locations(df_locations)
             processor.set_p0(prob)
@@ -97,7 +107,13 @@ def file_upload():
                 endTime = eastern.localize(endTime).isoformat()
                 processor.set_end(endTime)
             processor.process_data()
-            session['processor'] = processor
+            session['processorDistance'] = distance
+            if processor.get_demand() is not None:
+                # serialize df_demand
+                df_demand_compressed = pa.serialize(processor.get_demand()).to_buffer().to_pybytes()
+                session['processorData'] = df_demand_compressed
+            else:
+                print("processing didn't generate df_demand")
             # print("Shape of demand file", processor.get_demand().shape)
             # time.sleep(3) # sleep for 3 seconds for testing
         else:
@@ -107,9 +123,11 @@ def file_upload():
 
 @app.route('/return-demand-file', methods=['GET'])
 def return_demand_file():
-    processor = session.get('processor', None)
-    if processor is not None and processor.get_demand() is not None:
-        demand_list = processor.get_relevant_demand_cols().to_dict('records', into=OrderedDict)
+    processor_data = session.get('processorData', None)
+    # deserialize processor_data
+    if processor_data is not None:
+        df_demand = pa.deserialize(processor_data)
+        demand_list = utils.get_relevant_demand_cols(df_demand).to_dict('records', into=OrderedDict)
         return excel.make_response_from_records(demand_list, file_type='csv')
     else:
         print("demand df is none")
@@ -131,8 +149,20 @@ def return_rectangles():
     # ]
     # test_processor = DataProcessor()
     # rectangles = test_processor.build_shape_data()
-    processor = session.get('processor', None)
-    if processor is not None and processor.get_demand() is not None:
+    # TODO: think carefully about default value for processor_distance
+    processor_distance = session.get('processorDistance', 400)
+    processor_data = session.get('processorData', None)
+    # deserialize processor_data
+    if processor_data is not None:
+        df_demand = pa.deserialize(processor_data)
+    else:
+        print("demand df is none")
+        return {'data': []}
+    # create Processor object
+    processor = DataProcessor()
+    if utils.is_valid_df_demand(df_demand):
+        processor.set_demand(df_demand)
+        processor.set_distance(processor_distance)
         if request.method == 'POST':
             start = str(request.form.get('start'))
             end = str(request.form.get('end'))
@@ -147,5 +177,5 @@ def return_rectangles():
         end = datetime.strptime(end, '%Y-%m-%d').strftime("%m/%d/%Y")
         return {'data': rectangles, 'start': start, 'end': end}
     else:
-        print("demand df is none")
+        print("demand file missing required cols")
         return {'data': []}

@@ -108,3 +108,23 @@ def clean_events_data(df, start, end):
     # also make sure dates are between the start and end period
     df = df[(df['event_type_reason'] == "user_pick_up") & (df['time'] >= start) & (df['time'] <= end)]
     return df[['lat', 'lng', 'time', 'time_type']].reset_index(drop=True)
+
+def get_relevant_demand_cols(df_demand):
+    """ Returns the subset of df_demand that we want to save to a CSV
+        file if the user clicks on the download data button
+    """
+    # select for cols we want
+    df = df_demand[["date", "left_lng", "right_lng", "lower_lat",
+                            "upper_lat", "avail_count", "avail_mins",
+                            "trips", "prob_scooter_avail", "adj_trips"]]
+    return df
+
+def is_valid_df_demand(df_demand):
+    """ Check to make sure df_demand is valid in terms of its columns
+    """
+    cols = ["date", "left_lng", "right_lng", "lower_lat", "upper_lat",
+            "avail_count", "avail_mins", "trips", "prob_scooter_avail", "adj_trips"]
+    for col in cols:
+        if col not in df_demand.columns:
+            return False
+    return True

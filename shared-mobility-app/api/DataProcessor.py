@@ -60,26 +60,6 @@ class DataProcessor:
     def set_end(self, end):
         self.end = end
 
-    def is_valid_df_demand(self, df_demand):
-        """ Check to make sure df_demand is valid in terms of its columns
-        """
-        cols = ["date", "left_lng", "right_lng", "lower_lat", "upper_lat",
-                "avail_count", "avail_mins", "trips", "prob_scooter_avail", "adj_trips"]
-        for col in cols:
-            if col not in df_demand.columns:
-                return False
-        return True
-
-    def get_relevant_demand_cols(self):
-        """ Returns the subset of self.df_demand that we want to save to a CSV
-            file if the user clicks on the download data button
-        """
-        # select for cols we want
-        df = self.df_demand[["date", "left_lng", "right_lng", "lower_lat",
-                                "upper_lat", "avail_count", "avail_mins",
-                                "trips", "prob_scooter_avail", "adj_trips"]]
-        return df
-
     def map_values_to_color(self, df, col_name):
         """ Takes in a column name (x) in self.demand and returns a DataFrame with
             a new column called x_color that mapped the values of x to a hex code
