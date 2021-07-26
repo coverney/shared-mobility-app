@@ -65,7 +65,8 @@ def file_upload():
                 # serialize df_demand
                 df_demand_compressed = pa.serialize(df_demand).to_buffer().to_pybytes()
                 session['processorData'] = df_demand_compressed
-                # TODO: need to find processorDistance from df_demand!!
+                # find processorDistance from df_demand
+                session['processorDistance'] = utils.get_distance(df_demand_compressed)
             else:
                 # return unsuccessful response
                 response = {'error': True, 'msg': "demand file missing required cols"}
@@ -107,15 +108,14 @@ def file_upload():
                 endTime = eastern.localize(endTime).isoformat()
                 processor.set_end(endTime)
             processor.process_data()
-            session['processorDistance'] = distance
             if processor.get_demand() is not None:
                 # serialize df_demand
                 df_demand_compressed = pa.serialize(processor.get_demand()).to_buffer().to_pybytes()
                 session['processorData'] = df_demand_compressed
+                session['processorDistance'] = distance
             else:
                 print("processing didn't generate df_demand")
-            # print("Shape of demand file", processor.get_demand().shape)
-            # time.sleep(3) # sleep for 3 seconds for testing
+                response = {'error': True, 'msg': "processing didn't generate a data file"}
         else:
             # return unsuccessful response
             response = {'error': True, 'msg': "invalid file extension, both files need to be CSV"}
@@ -149,11 +149,10 @@ def return_rectangles():
     # ]
     # test_processor = DataProcessor()
     # rectangles = test_processor.build_shape_data()
-    # TODO: think carefully about default value for processor_distance
-    processor_distance = session.get('processorDistance', 400)
+    processor_distance = session.get('processorDistance', None)
     processor_data = session.get('processorData', None)
     # deserialize processor_data
-    if processor_data is not None:
+    if processor_data is not None and processor_distance is not None:
         df_demand = pa.deserialize(processor_data)
     else:
         print("demand df is none")

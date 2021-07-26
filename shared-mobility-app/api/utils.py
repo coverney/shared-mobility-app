@@ -43,6 +43,16 @@ def haversine(p1, p2):
 
     return 2 * _AVG_EARTH_RADIUS_KM * asin(sqrt(d))
 
+def get_distance(df):
+    """ Find the average grid cell dimension from df.
+        For each row get the grid cell distance, average all the values,
+        then round and return the distance in meters
+    """
+    # get all the distances between the upper left and upper right points
+    avg_dist = df.apply(lambda x: haversine((x['upper_lat'], x['left_lng']), (x['upper_lat'], x['right_lng'])), axis=1).mean()
+    # avg_dist is in km so need to convert to meters
+    return round(avg_dist*1000)
+
 def add_distance(distance, coord, direction):
     """ Add distance to inputted coordinate in a particular direction and return new coordinate.
         Diagonal directions means we go up/down and left/right for the inputted distance
