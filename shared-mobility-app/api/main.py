@@ -66,7 +66,7 @@ def file_upload():
                 df_demand_compressed = pa.serialize(df_demand).to_buffer().to_pybytes()
                 session['processorData'] = df_demand_compressed
                 # find processorDistance from df_demand
-                session['processorDistance'] = utils.get_distance(df_demand_compressed)
+                session['processorDistance'] = utils.get_distance(df_demand)
             else:
                 # return unsuccessful response
                 response = {'error': True, 'msg': "demand file missing required cols"}
