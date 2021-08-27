@@ -40,6 +40,11 @@ def index():
     processor_distance = session.pop('processorDistance', None)
     return app.send_static_file("index.html")
 
+@app.route('/upload-test', methods=['POST'])
+def large_file_upload():
+    print("hi")
+    return 'OK'
+
 @app.route('/upload', methods=['POST'])
 def file_upload():
     """ Accepts uploaded file from React,

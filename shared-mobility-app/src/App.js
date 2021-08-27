@@ -3,6 +3,7 @@ import React from 'react';
 import './App.css';
 import Upload from './components/Upload'
 import DataVisualization from './components/DataVisualization'
+import ChunkingTest from './components/ChunkingTest'
 import {
   BrowserRouter as Router,
   Switch,
@@ -16,6 +17,12 @@ function App() {
         <Switch>
           {/* If the current URL is /data, this route is rendered
           while the rest are ignored. */}
+          <Route path="/test">
+            <div className="App">
+              <ChunkingTest />
+            </div>
+          </Route>
+
           <Route path="/data">
             <DataVisualization />
           </Route>
