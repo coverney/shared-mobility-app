@@ -24,6 +24,8 @@ app.config['SESSION_PERMANENT'] = environ.get('SESSION_PERMANENT')
 app.config['SESSION_USE_SIGNER'] = environ.get('SESSION_USE_SIGNER')
 app.config['SESSION_REDIS'] = redis.from_url(environ.get('SESSION_REDIS'))
 
+app.config['MAX_CONTENT_LENGTH'] = 1 * 1000 * 1000 * 1000
+
 # Create and initialize the Flask-Session object AFTER `app` has been configured
 server_session = Session(app)
 excel.init_excel(app)
