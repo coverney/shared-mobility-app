@@ -1,0 +1,12 @@
+name: shared-mobility
+title: shared-mobility
+username:
+account: alicejpaul
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 4558611
+bundleId: 4980771
+url: https://alicejpaul.shinyapps.io/shared-mobility/
+when: 1630333892.67414
+asMultiple: FALSE
+asStatic: FALSE

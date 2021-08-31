@@ -1,0 +1,13 @@
+name: test_reticulate
+title: test_reticulate
+username:
+account: alicejpaul
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 4558370
+bundleId: 4981837
+url: https://alicejpaul.shinyapps.io/test_reticulate/
+when: 1630352990.28006
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: events_filtered.csv|events_oct_19.csv|events.csv|locations_for_multiple_providers_from_18-11-01_to_19-11-01.csv|locations_oct_19.csv|processed_data.csv
