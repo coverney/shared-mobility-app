@@ -19,7 +19,7 @@ ui <- fluidPage(
     
 
     # Application title
-    titlePanel("Processing Data"),
+    titlePanel("Shared-Mobility Data and Demand"),
 
     # Sidebar with a slider input for number of bins 
     sidebarLayout(
@@ -38,11 +38,23 @@ ui <- fluidPage(
             
             sliderInput("prob_0", "Probability (%) a user will not consider a scooter more than one
                         grid away", 0, 100, 100, 5),
+            
+            tags$hr(),
+            tags$p("OR upload a previously processed file"),
+            
+            fileInput("demand", "Choose Processed CSV File", 
+                      accept = c("text/csv",
+                                 "text/comma-separated-values,text/plain",
+                                 ".csv")),
+            
+            tags$hr(),
 
-            actionButton("go", "Process"),
+            actionButton("go", "Go!"),
             
             # Horizontal line ----
-            tags$hr()
+            tags$hr(),
+            
+            actionButton("var_desc", "Variable Descriptions")
             
             
         ),
@@ -50,7 +62,21 @@ ui <- fluidPage(
         # Show a plot of the generated distribution
         mainPanel(
             textOutput(outputId = "status"), 
-            uiOutput("download")
+            uiOutput("download"),
+            fluidRow(
+                column(3, uiOutput("start_date_selection")),
+                column(3, uiOutput("end_date_selection"))
+            ),
+            fluidRow(
+                column(6, uiOutput("var1_selection")),
+                column(6, uiOutput("var2_selection"))
+            ),
+            #uiOutput("download") #,
+            #tabsetPanel(
+            #    tabPanel("Trips", p("tripPlot")),
+            #    tabPanel("Availability",p("availPlot")),
+            #    tabPanel("Demand", p("demandPlot"))
+            #)
         )
     )
 )
@@ -60,7 +86,7 @@ server <- function(input, output) {
     
 
     # ------------------ App virtualenv setup (Do not edit) ------------------- #
-    
+    source('.Rprofile')
     virtualenv_dir = Sys.getenv('VIRTUALENV_NAME')
     python_path = Sys.getenv('PYTHON_PATH')
     
@@ -71,22 +97,77 @@ server <- function(input, output) {
     
     # Import python functions to R
     reticulate::source_python('DataProcessor.py')
+    print("HERE")
     
     processData <- eventReactive(input$go,{
-        req(input$events)
-        req(input$locations)
-        showModal(modalDialog("Data is processing. A pop-up will appear when the process is complete.", footer = modalButton("Close")))
-        df_events = read.csv(input$events$datapath)
-        df_locations = read.csv(input$locations$datapath)
-        df_demand = process_reticulate(df_events, df_locations, input$grid_size, input$prob_0)
-        df_demand$left_lng = as.numeric(df_demand$left_lng)
-        df_demand$right_lng = as.numeric(df_demand$right_lng)
-        df_demand$upper_lat = as.numeric(df_demand$upper_lat)
-        df_demand$lower_lat = as.numeric(df_demand$lower_lat)
-        showModal(modalDialog("Data is ready!", footer = modalButton("Close")))
+        if(is.null(input$demand)){
+            req(input$events)
+            req(input$locations)
+            showModal(modalDialog("Data is processing. A pop-up will appear when the process is complete.", footer = modalButton("Close")))
+            df_events = read.csv(input$events$datapath)
+            df_locations = read.csv(input$locations$datapath)
+            df_demand = process_reticulate(df_events, df_locations, input$grid_size, input$prob_0)
+            df_demand$left_lng = as.numeric(df_demand$left_lng)
+            df_demand$right_lng = as.numeric(df_demand$right_lng)
+            df_demand$upper_lat = as.numeric(df_demand$upper_lat)
+            df_demand$lower_lat = as.numeric(df_demand$lower_lat)
+            showModal(modalDialog("Data is ready!", footer = modalButton("Close")))
+            return(df_demand)
+        } else{
+            req(input$demand)
+            df_demand = read.csv(input$demand$datapath)
+        }
+        
         return(df_demand)
     })
     
+    varDescription <- observeEvent(input$var_desc,{
+        showModal(modalDialog(title = "Variable Descriptions", 
+                            HTML("Average Number Available (avail_count): average number of scooters available
+                              during that day. <br>
+                              Available Minutes (avail_mins): minutes at least one scooter available. <br>
+                              Probability Available (prob_scooter_avail): Estimated probability a randomly 
+                              arriving user will find a scooter available within the user's threshold. <br>
+                              Trips (trips): Number of trips from scooters in this cell. <br>
+                              Adjusted Trips (adj_trips): Estimated number of trips originating from users 
+                              in this cell. <br>
+                              <br>
+                              Percent available can be calculated by dividing avail_mins by 24*60. <br>
+                              Estimated demand can be calculated by dividing the average adjusted trips
+                              by average probability available.")))
+    })
+    
+    output$start_date_selection <- renderUI({
+        df_demand = processData()
+        tagList(
+            dateInput("start_date", label = "Start Date", 
+                        min = min(df_demand$date), max = max(df_demand$date), value = min(df_demand$date))
+        )
+    })
+    
+    vars <- c("Percent Available", "Probability Available", "Trips", "Adjusted Trips", "Demand")
+    
+    output$var1_selection <- renderUI({
+        df_demand = processData()
+        tagList(
+            selectInput("var1", "Variable 1 to Display", choices = vars, selected = "Probability Available")
+        )
+    })
+    
+    output$var2_selection <- renderUI({
+        df_demand = processData()
+        tagList(
+            selectInput("var1", "Variable 2 to Display", choices = vars, selected = "Adjusted Trips")
+        )
+    })
+    
+    output$end_date_selection <- renderUI({
+        df_demand = processData()
+        tagList(
+            dateInput("end_date", label = "End Date", 
+                      min = min(df_demand$date), max = max(df_demand$date), value = max(df_demand$date))
+        )
+    })
     
     output$download <- renderUI({
         df_demand = processData()
@@ -99,14 +180,20 @@ server <- function(input, output) {
             }
         )
         tagList(
-            downloadButton('df_file', "Download Processed Data")
+            downloadButton('df_file', "Download Data")
         )
     })    
 
     
     output$status <- renderText({
         result <- processData()
-        paste("Last processed: ",Sys.time())
+        if(is.null(input$demand)){
+            result <- processData()
+            paste("Last processed: ",Sys.time())
+        } else{
+            paste("Last uploaded: ", Sys.time())
+        }
+        
     })
     
     
