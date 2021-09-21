@@ -13,6 +13,10 @@ options(shiny.maxRequestSize=100*1024^2)
 
 library(shiny)
 library(tidyverse)
+source('utils.R')
+
+vars <- c("Percent Available"="mean_perc_avail", "Average # Available" = "mean_avg_count", "Probability Available"="mean_prob_avail", 
+          "Trips"="mean_trips", "Adjusted Trips"="mean_adj_trips")
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
@@ -68,15 +72,13 @@ ui <- fluidPage(
                 column(3, uiOutput("end_date_selection"))
             ),
             fluidRow(
-                column(6, uiOutput("var1_selection")),
-                column(6, uiOutput("var2_selection"))
+                column(6, conditionalPanel(
+                    "input.go > 0",
+                    selectInput("var1", "Variable to Plot", vars)
+                ),
+                       leafletOutput("var1_plot")),
+                #column(6, uiOutput("var2_selection"))
             ),
-            #uiOutput("download") #,
-            #tabsetPanel(
-            #    tabPanel("Trips", p("tripPlot")),
-            #    tabPanel("Availability",p("availPlot")),
-            #    tabPanel("Demand", p("demandPlot"))
-            #)
         )
     )
 )
@@ -106,7 +108,10 @@ server <- function(input, output) {
             showModal(modalDialog("Data is processing. A pop-up will appear when the process is complete.", footer = modalButton("Close")))
             df_events = read.csv(input$events$datapath)
             df_locations = read.csv(input$locations$datapath)
-            df_demand = process_reticulate(df_events, df_locations, input$grid_size, input$prob_0)
+            start_date <- min(as.Date(df_events$event_time))
+            end_date <- max(as.Date(df_events$event_time))
+            df_demand <- process_reticulate(df_events, df_locations, input$grid_size, input$prob_0/100) %>%
+               filter(as.Date(date) >= as.Date(start_date) & as.Date(date) <= as.Date(end_date))
             df_demand$left_lng = as.numeric(df_demand$left_lng)
             df_demand$right_lng = as.numeric(df_demand$right_lng)
             df_demand$upper_lat = as.numeric(df_demand$upper_lat)
@@ -145,22 +150,6 @@ server <- function(input, output) {
         )
     })
     
-    vars <- c("Percent Available", "Probability Available", "Trips", "Adjusted Trips", "Demand")
-    
-    output$var1_selection <- renderUI({
-        df_demand = processData()
-        tagList(
-            selectInput("var1", "Variable 1 to Display", choices = vars, selected = "Probability Available")
-        )
-    })
-    
-    output$var2_selection <- renderUI({
-        df_demand = processData()
-        tagList(
-            selectInput("var1", "Variable 2 to Display", choices = vars, selected = "Adjusted Trips")
-        )
-    })
-    
     output$end_date_selection <- renderUI({
         df_demand = processData()
         tagList(
@@ -168,6 +157,18 @@ server <- function(input, output) {
                       min = min(df_demand$date), max = max(df_demand$date), value = max(df_demand$date))
         )
     })
+    
+    output$var1_plot <- renderLeaflet({
+        sqrt_vars <- c("mean_trips", "mean_adj_trips")
+        sqrt_scale <- FALSE
+        if (input$var1 %in% sqrt_vars){
+            sqrt_scale <- TRUE
+        }
+        df_demand = processData()
+        summary_df = summarize_data(df_demand, input$start_date, input$end_date)
+        genMap(summary_df, input$var1, sqrt_scale)
+    })
+    
     
     output$download <- renderUI({
         df_demand = processData()
